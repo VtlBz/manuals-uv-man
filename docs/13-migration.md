@@ -287,7 +287,7 @@ rm requirements.txt requirements-dev.txt
 ### Таблица соответствия
 
 | pip-tools | uv | Описание |
-| --- | --- | --- |
+| --------- | -- | -------- |
 | `requirements.in` | `[project.dependencies]` в pyproject.toml | Список прямых зависимостей |
 | `requirements-dev.in` | `[dependency-groups.dev]` в pyproject.toml | Dev-зависимости |
 | `pip-compile` | `uv lock` | Генерация lockfile из списка зависимостей |
@@ -533,7 +533,7 @@ uv python pin 3.12.4
 Если вы используете `pyenv-virtualenv` для управления виртуальными окружениями:
 
 | pyenv-virtualenv | uv | Описание |
-| --- | --- | --- |
+| ---------------- | -- | -------- |
 | `pyenv virtualenv 3.12 my-env` | `uv venv` (автоматически) | Создание окружения |
 | `pyenv activate my-env` | Не требуется | Активация (uv run делает это автоматически) |
 | `pyenv deactivate` | Не требуется | Деактивация |
@@ -569,7 +569,7 @@ uvx migrate-to-uv
 Поддерживаемые источники:
 
 | Источник | Файлы, которые конвертируются |
-| --- | --- |
+| -------- | ----------------------------- |
 | pip / requirements.txt | `requirements.txt`, `requirements-dev.txt` |
 | pip-tools | `requirements.in`, `requirements-dev.in`, `*.txt` |
 | Poetry | `pyproject.toml` (секция `[tool.poetry]`) |
@@ -591,7 +591,7 @@ uvx migrate-to-uv --keep-old-files
 ### Когда использовать автоматическую миграцию
 
 | Сценарий | Рекомендация |
-| --- | --- |
+| -------- | ------------ |
 | Простой проект с `requirements.txt` | Автоматическая или ручная - разница минимальна |
 | Проект с pip-tools | Автоматическая миграция удобнее |
 | Проект с Poetry/Pipenv | Автоматическая миграция значительно проще |

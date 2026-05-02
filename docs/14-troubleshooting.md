@@ -235,7 +235,7 @@ uv cache dir
 Стандартные пути:
 
 | ОС | Путь |
-| --- | --- |
+| -- | ---- |
 | Linux | `~/.cache/uv` (`$XDG_CACHE_HOME/uv`) |
 | macOS | `~/Library/Caches/uv` |
 | Windows | `%LOCALAPPDATA%\uv\cache` |
@@ -304,13 +304,13 @@ uv sync --refresh-package fastapi
 
 ### Когда что использовать
 
-| Ситуация                | Команда                |
-|-------------------------|------------------------|
-| Кеш разросся            | `uv cache prune`       |
-| Очистка в конце CI      | `uv cache prune --ci`  |
-| Подозрение на коррупцию | `uv cache clean`       |
-| Пересобрать один пакет  | `uv cache clean <pkg>` |
-| Проверить свежие версии | `--refresh`            |
+| Ситуация | Команда |
+| -------- | ------- |
+| Кеш разросся | `uv cache prune` |
+| Очистка в конце CI | `uv cache prune --ci` |
+| Подозрение на коррупцию | `uv cache clean` |
+| Пересобрать один пакет | `uv cache clean <pkg>` |
+| Проверить свежие версии | `--refresh` |
 
 ---
 

@@ -43,7 +43,7 @@ myproject/
 ### Что коммитить в git
 
 | Файл / директория | Коммитить? | Почему |
-| --- | --- | --- |
+| ----------------- | ---------- | ------ |
 | `pyproject.toml` | Да | Основа конфигурации проекта |
 | `uv.lock` | **Да** | Гарантирует воспроизводимые сборки |
 | `.python-version` | Да | Единая версия Python в команде |
@@ -133,7 +133,7 @@ Thumbs.db
 ### Управление проектом
 
 | Задача | Команда |
-| --- | --- |
+| ------ | ------- |
 | Создать новый проект | `uv init myproject` |
 | Создать библиотеку | `uv init --lib mylib` |
 | Синхронизировать окружение | `uv sync` |
@@ -143,7 +143,7 @@ Thumbs.db
 ### Зависимости
 
 | Задача | Команда |
-| --- | --- |
+| ------ | ------- |
 | Добавить зависимость | `uv add requests` |
 | Добавить с ограничением версии | `uv add "requests>=2.31"` |
 | Добавить dev-зависимость | `uv add --dev pytest` |
@@ -158,7 +158,7 @@ Thumbs.db
 ### Запуск кода
 
 | Задача | Команда |
-| --- | --- |
+| ------ | ------- |
 | Запустить скрипт | `uv run python app.py` |
 | Запустить модуль | `uv run python -m myapp` |
 | Запустить тесты | `uv run pytest` |
@@ -169,7 +169,7 @@ Thumbs.db
 ### Python
 
 | Задача | Команда |
-| --- | --- |
+| ------ | ------- |
 | Установить Python | `uv python install 3.12` |
 | Установить несколько версий | `uv python install 3.11 3.12 3.13` |
 | Зафиксировать версию | `uv python pin 3.12` |
@@ -179,7 +179,7 @@ Thumbs.db
 ### Сборка и публикация
 
 | Задача | Команда |
-| --- | --- |
+| ------ | ------- |
 | Собрать пакет | `uv build` |
 | Собрать только wheel | `uv build --wheel` |
 | Собрать только sdist | `uv build --sdist` |
@@ -189,7 +189,7 @@ Thumbs.db
 ### Инструменты и утилиты
 
 | Задача | Команда |
-| --- | --- |
+| ------ | ------- |
 | Установить CLI-инструмент | `uv tool install ruff` |
 | Список установленных инструментов | `uv tool list` |
 | Обновить инструмент | `uv tool upgrade ruff` |
@@ -205,7 +205,7 @@ Thumbs.db
 ### pip -> uv
 
 | Старая команда | Эквивалент uv | Примечание |
-| --- | --- | --- |
+| -------------- | ------------- | ---------- |
 | `pip install requests` | `uv add requests` | Проектный workflow (рекомендуется) |
 | `pip install requests` | `uv pip install requests` | Pip-совместимый интерфейс |
 | `pip install -r requirements.txt` | `uv pip install -r requirements.txt` | Или мигрируйте на `uv sync` |
@@ -219,7 +219,7 @@ Thumbs.db
 ### pip-tools -> uv
 
 | Старая команда | Эквивалент uv | Примечание |
-| --- | --- | --- |
+| -------------- | ------------- | ---------- |
 | `pip-compile requirements.in` | `uv pip compile requirements.in` | Pip-совместимый интерфейс |
 | `pip-compile requirements.in` | `uv lock` | Проектный workflow |
 | `pip-sync requirements.txt` | `uv pip sync requirements.txt` | Pip-совместимый интерфейс |
@@ -228,7 +228,7 @@ Thumbs.db
 ### pyenv -> uv
 
 | Старая команда | Эквивалент uv | Примечание |
-| --- | --- | --- |
+| -------------- | ------------- | ---------- |
 | `pyenv install 3.12` | `uv python install 3.12` | Установка Python |
 | `pyenv local 3.12` | `uv python pin 3.12` | Записывает в `.python-version` |
 | `pyenv global 3.12` | - | uv работает на уровне проекта |
@@ -238,7 +238,7 @@ Thumbs.db
 ### virtualenv / venv -> uv
 
 | Старая команда | Эквивалент uv | Примечание |
-| --- | --- | --- |
+| -------------- | ------------- | ---------- |
 | `python -m venv .venv` | `uv venv` | Явное создание |
 | `python -m venv .venv` | (автоматически) | `uv sync` создает `.venv` при необходимости |
 | `source .venv/bin/activate` | `uv run ...` | Активация не нужна |
@@ -246,7 +246,7 @@ Thumbs.db
 ### pipx -> uv
 
 | Старая команда | Эквивалент uv | Примечание |
-| --- | --- | --- |
+| -------------- | ------------- | ---------- |
 | `pipx run ruff` | `uvx ruff` | Запуск без установки |
 | `pipx install ruff` | `uv tool install ruff` | Глобальная установка |
 | `pipx uninstall ruff` | `uv tool uninstall ruff` | Удаление |
@@ -256,7 +256,7 @@ Thumbs.db
 ### poetry -> uv
 
 | Старая команда | Эквивалент uv | Примечание |
-| --- | --- | --- |
+| -------------- | ------------- | ---------- |
 | `poetry init` | `uv init` | Инициализация проекта |
 | `poetry add requests` | `uv add requests` | Добавление зависимости |
 | `poetry add --group dev pytest` | `uv add --dev pytest` | Dev-зависимость |
@@ -272,7 +272,7 @@ Thumbs.db
 ### twine -> uv
 
 | Старая команда | Эквивалент uv | Примечание |
-| --- | --- | --- |
+| -------------- | ------------- | ---------- |
 | `twine upload dist/*` | `uv publish` | Публикация на PyPI |
 | `twine upload -r private dist/*` | `uv publish --index private` | Приватный реестр |
 | `twine check dist/*` | - | Проверка встроена в `uv build` |
@@ -450,7 +450,7 @@ override-dependencies = [
 ## Полезные ссылки
 
 | Ресурс | Ссылка |
-| --- | --- |
+| ------ | ------ |
 | Официальная документация | [docs.astral.sh/uv](https://docs.astral.sh/uv/) |
 | GitHub-репозиторий | [github.com/astral-sh/uv](https://github.com/astral-sh/uv) |
 | Руководство по миграции с pip | [Migration guide](https://docs.astral.sh/uv/guides/migration/pip-to-project/) |

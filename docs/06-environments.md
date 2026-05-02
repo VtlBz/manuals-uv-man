@@ -94,7 +94,7 @@ uv venv --python-preference only-system
 ### Когда нужно создавать окружение вручную
 
 | Сценарий | Автоматическое (.venv) | Ручное (uv venv) |
-| --- | --- | --- |
+| -------- | ---------------------- | ---------------- |
 | Обычная работа с проектом | Достаточно | Не требуется |
 | Нужна конкретная версия Python | `uv sync` учтет `.python-version` | `uv venv --python 3.11` |
 | Несколько окружений для тестов | Не подходит | `uv venv --python 3.X .venv-3.X` |
@@ -343,7 +343,7 @@ uv sync
 ### Сравнительная таблица
 
 | Действие | uv run | Ручная активация |
-| --- | --- | --- |
+| -------- | ------ | ---------------- |
 | Запуск скрипта | `uv run python app.py` | `source .venv/bin/activate && python app.py` |
 | Запуск тестов | `uv run pytest` | `source .venv/bin/activate && pytest` |
 | Запуск линтера | `uv run ruff check .` | `source .venv/bin/activate && ruff check .` |
