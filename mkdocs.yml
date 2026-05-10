@@ -52,6 +52,7 @@ markdown_extensions:
   - def_list
   - toc:
       permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
 
 plugins:
   - search:
@@ -65,9 +66,9 @@ nav:
   - "3. Управление версиями Python": 03-python-versions.md
   - "4. Инициализация проекта": 04-project-init.md
   - "5. Управление зависимостями": 05-dependencies.md
-  - "6. Виртуальные окружения": 06-environments.md
+  - "6. Sync-workflow": 06-sync-workflow.md
   - "7. Запуск кода и инструментов": 07-running-code.md
-  - "8. Sync-workflow": 08-sync-workflow.md
+  - "8. Виртуальные окружения": 08-environments.md
   - "9. Конфигурация": 09-configuration.md
   - "10. Docker и CI/CD": 10-docker-ci.md
   - "11. Workspaces": 11-workspaces.md
