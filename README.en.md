@@ -63,7 +63,15 @@ uv run mkdocs build
 The site is published via GitHub Pages using GitHub Actions.
 A push to `main` triggers an automatic build and deploy.
 
+## Authorship Note
+
+The concept, structure, writing style, and editorial decisions of this guide
+belong to the author. Generative AI tools were used as an aid for preparing
+draft text, which was then reviewed, edited, and assembled by the author.
+
 ## License
 
-Documentation (`docs/`, `course/`) - [CC BY-NC-SA 4.0](LICENSE-CC).
-All other files - [BSD 3-Clause](LICENSE-BSD).
+Documentation (`docs/`, `course/`, READMEs and other text materials) -
+[CC BY-NC-SA 4.0](LICENSE-CC).
+Code samples in documentation and all other files (configuration, scripts, CI) -
+[BSD 3-Clause](LICENSE-BSD).

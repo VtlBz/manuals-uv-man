@@ -1,12 +1,17 @@
-Copyright (c) 2026 Vitaly Shmelev
+Copyright (c) 2026, Vitaly Shmelev
 
 This project uses a dual-license model:
 
-1. Documentation content (docs/, course/) is licensed under
+1. Documentation content (all files in docs/, course/, other docs and README-files
+   in the repository) is licensed under
    Creative Commons Attribution-NonCommercial-ShareAlike 4.0
    International (CC BY-NC-SA 4.0).
    See LICENSE-CC for details.
 
-2. All other files (configuration, scripts, CI workflows) are
-   licensed under the BSD 3-Clause License.
+2. Code samples embedded in documentation are licensed under BSD 3-Clause,
+   to enable readers to freely use them in their own projects.
+   See LICENSE-BSD for details.
+
+3. All other files (configuration, scripts, CI workflows) are licensed
+   under BSD 3-Clause.
    See LICENSE-BSD for details.
