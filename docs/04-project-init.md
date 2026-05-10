@@ -277,7 +277,7 @@ docs = [
 Это поведение можно изменить через настройку `default-groups` в `[tool.uv]`.
 
 Подробнее об управлении группами при установке (`uv sync`, `default-groups`,
-`--no-dev`, `--group`, `--only-group`) - в [разделе 5](05-dependencies.md#группы-зависимостей).
+`--no-dev`, `--group`, `--only-group`) - в разделе [Группы зависимостей](05-dependencies.md#группы-зависимостей).
 
 ### Секция `[project.optional-dependencies]`
 
