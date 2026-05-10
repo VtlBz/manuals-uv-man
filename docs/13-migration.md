@@ -4,8 +4,8 @@
 
 ## Миграция с requirements.txt
 
-Это самый распространенный сценарий. У вас есть проект с `requirements.txt` (и,
-возможно, `requirements-dev.txt`), и вы хотите перейти на uv.
+Это самый распространенный сценарий. У вас есть проект с `requirements.txt`
+(и, возможно, `requirements-dev.txt`), и вы хотите перейти на `uv`.
 
 ### Исходная структура проекта
 
@@ -48,21 +48,20 @@ my-project/
 
 ### Шаг 1. Инициализация проекта
 
-Если в проекте ещe нет `pyproject.toml`, выполните `uv init` в корневой
-директории:
+Если в проекте ещe нет `pyproject.toml`, выполните `uv init` в корневой директории:
 
 ```bash
 cd my-project
 uv init
 ```
 
-uv создаст `pyproject.toml` с базовой структурой. Если файл `pyproject.toml` уже
+`uv` создаст `pyproject.toml` с базовой структурой. Если файл `pyproject.toml` уже
 существует (например, с конфигурацией ruff или mypy), добавьте в него секцию
 `[project]` вручную или используйте `uv init` - он дополнит существующий файл.
 
 !!! note "uv init и существующие файлы"
     Команда `uv init` не перезаписывает существующий `pyproject.toml`. Если файл
-    уже есть, uv добавит недостающие секции (`[project]`), оставив все остальные
+    уже есть, `uv` добавит недостающие секции (`[project]`), оставив все остальные
     настройки нетронутыми.
 
 ### Шаг 2. Импорт основных зависимостей
@@ -93,10 +92,10 @@ Dev-зависимости попадут в секцию `[dependency-groups]`:
 ```toml
 [dependency-groups]
 dev = [
-    "pytest>=8.3.5",
-    "pytest-cov>=6.1.1",
-    "mypy>=1.15.0",
-    "ruff>=0.11.8",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "mypy>=2.0.0",
+    "ruff>=0.15.12",
 ]
 ```
 
@@ -109,29 +108,47 @@ dev = [
     uv add --group docs -r requirements-docs.txt
     ```
 
-### Шаг 4. Сохранение точных версий из lockfile
+### Шаг 4. Что будет с версиями
 
-Если вы хотите сохранить точные версии пакетов, зафиксированные в вашем текущем
-`requirements.txt` (выступающем в роли lockfile), используйте флаг `-c`
-(constraint):
+Если ваш `requirements.txt` содержит точные пины (`flask==3.1.1`), после
+`uv add -r requirements.txt` они попадут в `pyproject.toml` как есть.
+Функционально это работает, но идиоматичнее хранить в `pyproject.toml` гибкие
+спецификаторы (`>=3.1`), а точную фиксацию оставлять `uv.lock`.
 
-```bash
-uv add -r requirements.in -c requirements.txt
+После импорта рекомендуется вручную ослабить версии в `pyproject.toml`:
+
+```toml
+[project]
+dependencies = [
+    "flask>=3.1",
+    "sqlalchemy>=2.0",
+]
 ```
 
-Здесь:
+Затем зафиксировать точные версии в lockfile:
 
-- `requirements.in` - файл с "мягкими" зависимостями (без версий или с
-  диапазонами);
-- `requirements.txt` - файл с точными версиями, используемый как constraint.
+```bash
+uv lock
+```
 
-Это гарантирует, что `uv.lock` зафиксирует те же версии, которые были в вашем
-`requirements.txt`, а в `pyproject.toml` попадут "мягкие" спецификаторы.
+!!! note "Если у вас pip-tools"
+    При миграции с pip-tools у вас есть `requirements.in` (мягкие спецификаторы)
+    и `requirements.txt` (скомпилированные точные версии). Флаг `-c` (constraint)
+    позволяет импортировать мягкие спецификаторы, сохранив точные версии в `uv.lock`:
 
-!!! warning "Порядок флагов имеет значение"
-    Убедитесь, что файл с constraints (`-c`) содержит точные версии (с `==`).
-    Если в `requirements.txt` есть диапазоны версий, они будут использованы как
-    ограничения, но не как точные фиксации.
+    ```bash
+    uv add -r requirements.in -c requirements.txt
+    ```
+
+    В `pyproject.toml` попадут спецификаторы из `.in`, а `uv.lock`
+    зафиксирует версии из `.txt`.
+
+!!! warning "Constraint работает только с точными пинами"
+    Флаг `-c` полезен для фиксации версий, только если файл содержит
+    точные пины (`flask==3.1.1`). Если в нем диапазоны (`flask>=3.0,<4.0`),
+    `uv` разрешит зависимости в рамках этих диапазонов и выберет наиболее
+    подходящую (обычно новейшую) версию - воспроизвести старое окружение
+    в точности не получится.
 
 ### Шаг 5. Проверка
 
@@ -156,81 +173,81 @@ uv run python -m app.main
 rm requirements.txt requirements-dev.txt
 ```
 
-Если были файлы `requirements.in`, `constraints.txt` или аналогичные - удалите и
-их.
+Если были файлы `requirements.in`, `constraints.txt` или аналогичные -
+удалите и их.
 
 ### Шаг 7. Обновление инфраструктуры
 
 Обновите все файлы, которые ссылаются на старые зависимости:
 
-=== "Dockerfile"
+**1. Dockerfile** (сборка образа):
 
-    **До миграции:**
+До миграции:
 
-    ```dockerfile
-    FROM python:3.12-slim
-    COPY requirements.txt .
-    RUN pip install -r requirements.txt
-    COPY . .
-    CMD ["python", "-m", "app.main"]
-    ```
+```dockerfile
+FROM python:3.12-slim
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["python", "-m", "app.main"]
+```
 
-    **После миграции:**
+После миграции:
 
-    ```dockerfile
-    FROM python:3.12-slim
-    # Install uv
-    COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-    # Copy project files
-    COPY pyproject.toml uv.lock ./
-    # Install dependencies (without dev)
-    RUN uv sync --frozen --no-dev --no-editable
-    COPY . .
-    CMD ["uv", "run", "python", "-m", "app.main"]
-    ```
+```dockerfile
+FROM python:3.12-slim
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Copy project files
+COPY pyproject.toml uv.lock ./
+# Install dependencies (without dev)
+RUN uv sync --frozen --no-dev --no-editable
+COPY . .
+CMD ["uv", "run", "python", "-m", "app.main"]
+```
 
-=== "CI/CD (GitHub Actions)"
+**2. CI/CD** (GitHub Actions):
 
-    **До миграции:**
+До миграции:
 
-    ```yaml
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt -r requirements-dev.txt
-      - run: pytest
-    ```
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-python@v5
+    with:
+      python-version: "3.12"
+  - run: pip install -r requirements.txt -r requirements-dev.txt
+  - run: pytest
+```
 
-    **После миграции:**
+После миграции:
 
-    ```yaml
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync --frozen
-      - run: uv run pytest
-    ```
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: astral-sh/setup-uv@v5
+  - run: uv sync --frozen
+  - run: uv run pytest
+```
 
-=== "README.md"
+**3. README.md** (инструкция для разработчиков):
 
-    **До миграции:**
+До миграции:
 
-    ```markdown
-    ## Setup
-    python -m venv .venv
-    source .venv/bin/activate
-    pip install -r requirements.txt
-    pip install -r requirements-dev.txt
-    ```
+```markdown
+## Setup
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
 
-    **После миграции:**
+После миграции:
 
-    ```markdown
-    ## Setup
-    uv sync
-    ```
+```markdown
+## Setup
+uv sync
+```
 
 ### Полный пример: до и после
 
@@ -281,8 +298,8 @@ rm requirements.txt requirements-dev.txt
 
 ## Миграция с pip-tools
 
-Если ваш проект использует `pip-tools` (`pip-compile` + `pip-sync`), миграция
-особенно проста - концепции практически идентичны.
+Если ваш проект использует `pip-tools` (`pip-compile` + `pip-sync`),
+миграция особенно проста - концепции практически идентичны.
 
 ### Таблица соответствия
 
@@ -298,14 +315,13 @@ rm requirements.txt requirements-dev.txt
 
 ### Пошаговый процесс
 
-**Шаг 1.** Инициализируйте uv-проект:
+**Шаг 1.** Инициализируйте `uv`-проект:
 
 ```bash
 uv init
 ```
 
-**Шаг 2.** Импортируйте зависимости из `.in`-файлов с ограничениями из
-`.txt`-файлов:
+**Шаг 2.** Импортируйте зависимости из `.in`-файлов с ограничениями из `.txt`-файлов:
 
 ```bash
 # Импорт production-зависимостей с фиксацией версий
@@ -349,7 +365,7 @@ uv add -r requirements.in -c requirements.txt
 
 1. uv читает список пакетов из `requirements.in` (например, `flask`,
    `sqlalchemy>=2.0`);
-2. при разрешении зависимостей uv учитывает ограничения из `requirements.txt`
+2. при разрешении зависимостей `uv` учитывает ограничения из `requirements.txt`
    (например, `flask==3.1.1`);
 3. в `pyproject.toml` попадают "мягкие" спецификаторы из `.in`-файла;
 4. в `uv.lock` фиксируются те же точные версии, что были в `.txt`-файле.
@@ -365,64 +381,72 @@ uv add -r requirements.in -c requirements.txt
     diff requirements.txt /tmp/uv-versions.txt
     ```
 
-    Незначительные расхождения в транзитивных зависимостях допустимы - резолверы
-    uv и pip-tools могут выбирать разные (но совместимые) версии.
+    Незначительные расхождения в транзитивных зависимостях допустимы -
+    резолверы `uv` и pip-tools могут выбирать разные (но совместимые) версии.
 
 ### Эквиваленты рабочих процессов
 
-=== "pip-tools"
+**1. pip-tools** (старый процесс):
 
-    ```bash
-    # Add a new dependency
-    echo "httpx" >> requirements.in
-    pip-compile requirements.in -o requirements.txt
-    pip-sync requirements.txt
+```bash
+# Add a new dependency
+echo "httpx" >> requirements.in
+pip-compile requirements.in -o requirements.txt
+pip-sync requirements.txt
 
-    # Update all dependencies
-    pip-compile --upgrade requirements.in -o requirements.txt
-    pip-sync requirements.txt
+# Update all dependencies
+pip-compile --upgrade requirements.in -o requirements.txt
+pip-sync requirements.txt
 
-    # Update a specific package
-    pip-compile -P flask requirements.in -o requirements.txt
-    pip-sync requirements.txt
-    ```
+# Update a specific package
+pip-compile -P flask requirements.in -o requirements.txt
+pip-sync requirements.txt
+```
 
-=== "uv"
+**2. uv** (новый процесс):
 
-    ```bash
-    # Add a new dependency
-    uv add httpx
+```bash
+# Add a new dependency
+uv add httpx
 
-    # Update all dependencies
-    uv lock --upgrade
-    uv sync
+# Update all dependencies
+uv lock --upgrade
+uv sync
 
-    # Update a specific package
-    uv lock --upgrade-package flask
-    uv sync
-    ```
+# Update a specific package
+uv lock --upgrade-package flask
+uv sync
+```
 
 ---
 
 ## Миграция с pyenv
 
-Переход с pyenv можно выполнять постепенно. Ниже описаны четыре фазы - от
-минимальных изменений до полного отказа от pyenv.
+Переход с pyenv можно выполнять постепенно. Ниже описаны четыре фазы -
+от минимальных изменений до полного отказа от pyenv.
 
 ### Фаза 1. Используем pyenv для Python, uv для пакетов
 
 На этом этапе вы продолжаете управлять версиями Python через pyenv, но
-переходите на uv для установки пакетов и управления зависимостями.
+переходите на `uv` для установки пакетов и управления зависимостями.
 
-Добавьте в `pyproject.toml`:
+Добавьте в конфигурацию проекта:
 
-```toml
-[tool.uv]
-python-preference = "system"
-```
+=== "pyproject.toml"
 
-Значение `system` говорит uv: "Используй Python, установленный в системе (в
-данном случае - через pyenv), и не скачивай свой".
+    ```toml
+    [tool.uv]
+    python-preference = "system"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    python-preference = "system"
+    ```
+
+Значение `system` говорит `uv`: "Используй Python, установленный в системе
+(в данном случае - через pyenv), и не скачивай свой".
 
 Рабочий процесс:
 
@@ -438,8 +462,8 @@ uv run pytest
 
 ### Фаза 2. Установка Python через uv параллельно с pyenv
 
-На этом этапе вы начинаете использовать встроенное управление Python в uv, но не
-удаляете pyenv.
+На этом этапе вы начинаете использовать встроенное управление Python в uv,
+но не удаляете pyenv.
 
 ```bash
 # Установка Python через uv
@@ -449,26 +473,41 @@ uv python install 3.12
 uv python pin 3.12
 ```
 
-В `pyproject.toml` можно изменить настройку или убрать её вовсе (по умолчанию uv
-предпочитает managed-версии, но использует системные при необходимости):
+В `pyproject.toml` можно изменить настройку или убрать её вовсе (по умолчанию
+`uv` предпочитает managed-версии, но использует системные при необходимости):
 
-```toml
-[tool.uv]
-# Поведение по умолчанию: предпочитать uv-managed Python, фолбэк на системный
-# python-preference = "managed"  # this is the default, can be omitted
-```
+=== "pyproject.toml"
 
-На этой фазе pyenv и uv сосуществуют. pyenv по-прежнему доступен как запасной
-вариант.
+    ```toml
+    [tool.uv]
+    # python-preference = "managed"  # default, can be omitted
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    # python-preference = "managed"  # default, can be omitted
+    ```
+
+На этой фазе pyenv и `uv` сосуществуют.
+pyenv по-прежнему доступен как запасной вариант.
 
 ### Фаза 3. Полный переход на uv для управления Python
 
-Измените конфигурацию, чтобы uv использовал только собственные версии Python:
+Измените конфигурацию, чтобы `uv` использовал только собственные версии Python:
 
-```toml
-[tool.uv]
-python-preference = "managed"
-```
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    python-preference = "managed"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    python-preference = "managed"
+    ```
 
 Установите все необходимые версии через uv:
 
@@ -480,12 +519,11 @@ uv python install 3.11 3.12 3.13
 uv python list --only-installed
 ```
 
-На этом этапе pyenv уже не участвует в рабочем процессе, но ещe установлен в
-системе.
+На этом этапе pyenv уже не участвует в рабочем процессе, но ещe установлен в системе.
 
 ### Фаза 4. Удаление pyenv (опционально)
 
-Когда все проекты переведены на uv и вы убедились, что всё работает:
+Когда все проекты переведены на `uv` и вы убедились, что всё работает:
 
 ```bash
 # Удаление pyenv (если установлен через git clone)
@@ -501,11 +539,11 @@ rm -rf ~/.pyenv
 !!! warning "Не спешите удалять pyenv"
     Удаление pyenv - это необратимый шаг. Убедитесь, что **все** ваши проекты
     (включая редко используемые) работают с uv-управляемым Python. Фаза 4
-    полностью опциональна - pyenv и uv могут сосуществовать без конфликтов.
+    полностью опциональна - pyenv и `uv` могут сосуществовать без конфликтов.
 
 ### Файлы .python-version
 
-Файл `.python-version` используется как pyenv, так и uv. Однако есть тонкости:
+Файл `.python-version` используется как pyenv, так и `uv`. Однако есть тонкости:
 
 ```bash
 # pyenv format (patch version required)
@@ -516,7 +554,7 @@ uv python pin 3.12
 # Creates .python-version with content: 3.12
 ```
 
-uv интерпретирует `.python-version` гибко:
+`uv` интерпретирует `.python-version` гибко:
 
 - `3.12` - любая версия 3.12.x;
 - `3.12.4` - точная версия 3.12.4.
@@ -540,7 +578,7 @@ uv python pin 3.12.4
 | `pyenv virtualenvs` | - | Список окружений |
 
 !!! note "uv и виртуальные окружения"
-    uv создает виртуальное окружение автоматически при первом `uv sync` или
+    `uv` создает виртуальное окружение автоматически при первом `uv sync` или
     `uv run`. Окружение размещается в `.venv/` в корне проекта. Явное создание и
     активация окружения, как правило, не нужны.
 
@@ -612,7 +650,7 @@ uvx migrate-to-uv --keep-old-files
 
 Многие команды уже используют `pyproject.toml` для конфигурации инструментов
 (ruff, mypy, pytest) без использования его для управления зависимостями. В этом
-случае миграция на uv особенно проста.
+случае миграция на `uv` особенно проста.
 
 ### Что уже есть
 
@@ -641,61 +679,65 @@ addopts = "-v --tb=short"
 Для интеграции с uv нужно добавить три секции: `[project]`,
 `[dependency-groups]` и (опционально) `[tool.uv]`:
 
-```toml
-# === NEW: project metadata (PEP 621) ===
-[project]
-name = "my-project"
-version = "0.1.0"
-description = "My awesome project"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "flask>=3.1.1",
-    "sqlalchemy>=2.0.40",
-    "pydantic>=2.11.1",
-]
+=== "pyproject.toml"
 
-# === NEW: dependency groups ===
-[dependency-groups]
-dev = [
-    "pytest>=8.3.5",
-    "pytest-cov>=6.1.1",
-    "mypy>=1.15.0",
-    "ruff>=0.11.8",
-]
+    ```toml
+    [project]
+    name = "my-project"
+    version = "0.1.0"
+    description = "My awesome project"
+    readme = "README.md"
+    requires-python = ">=3.12"
+    dependencies = [
+        "flask>=3.1.3",
+        "sqlalchemy>=2.0.49",
+        "pydantic>=2.13.4",
+    ]
 
-# === NEW: uv-specific settings (optional) ===
-[tool.uv]
-python-preference = "managed"
+    [dependency-groups]
+    dev = [
+        "pytest>=9.0.3",
+        "pytest-cov>=7.1.0",
+        "mypy>=2.0.0",
+        "ruff>=0.15.12",
+    ]
 
-# === EXISTING: untouched ===
-[tool.ruff]
-line-length = 120
-target-version = "py312"
+    [tool.uv]
+    python-preference = "managed"
 
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+    [tool.ruff]
+    line-length = 120
+    target-version = "py312"
 
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
+    [tool.ruff.lint]
+    select = ["E", "F", "I", "UP"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-v --tb=short"
-```
+    [tool.mypy]
+    python_version = "3.12"
+    strict = true
+    warn_return_any = true
+
+    [tool.pytest.ini_options]
+    testpaths = ["tests"]
+    addopts = "-v --tb=short"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    python-preference = "managed"
+    ```
 
 ### Ключевые моменты
 
-- Секции `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]` **остаются
-  нетронутыми**;
-- uv читает только `[project]`, `[dependency-groups]`, `[build-system]` и
-  `[tool.uv]`;
-- конфликтов между секциями не возникает - каждый инструмент читает только свою
-  секцию;
-- порядок секций в файле не имеет значения для TOML, но рекомендуется размещать
-  `[project]` в начале.
+- Секции `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`
+  **остаются нетронутыми**;
+- uv читает только `[project]`, `[dependency-groups]`, `[build-system]`
+  и `[tool.uv]`;
+- конфликтов между секциями не возникает - каждый инструмент читает
+  только свою секцию;
+- порядок секций в файле не имеет значения для TOML, но рекомендуется
+  размещать `[project]` в начале.
 
 !!! note "Автоматическое добавление секций"
     Команда `uv init` в директории с существующим `pyproject.toml` добавит
@@ -706,7 +748,7 @@ addopts = "-v --tb=short"
 
 ## Чек-лист миграции
 
-Используйте этот чек-лист при переводе проекта на uv:
+Используйте этот чек-лист при переводе проекта на `uv`:
 
 - [ ] Инициализировать проект (`pyproject.toml` + `uv.lock`)
 - [ ] Импортировать production-зависимости
@@ -716,13 +758,12 @@ addopts = "-v --tb=short"
 - [ ] Обновить `Dockerfile` (если применимо)
 - [ ] Обновить CI/CD-пайплайн (GitHub Actions, GitLab CI и т.д.)
 - [ ] Обновить `README.md` (инструкции по установке)
-- [ ] Обновить `.gitignore` (добавить `.venv/`, убедиться что `uv.lock` не в
-  игноре)
-- [ ] Удалить старые файлы (`requirements*.txt`, `Pipfile`, `Pipfile.lock` и
-  т.д.)
+- [ ] Обновить `.gitignore` (добавить `.venv/`, убедиться что `uv.lock` не в игноре)
+- [ ] Удалить старые файлы (`requirements*.txt`, `Pipfile`, `Pipfile.lock` и т.д.)
 - [ ] Уведомить команду и обновить документацию по онбордингу
 
 !!! tip "Пошаговый подход"
-    Не обязательно выполнять все пункты за один раз. Вы можете сначала выполнить
-    миграцию зависимостей (пункты 1-5), убедиться что все работает, а затем
-    обновить инфраструктуру (пункты 6-11) в отдельном коммите или PR.
+    Не обязательно выполнять все пункты за один раз. Вы можете сначала
+    выполнить миграцию зависимостей (пункты 1-5), убедиться что все
+    работает, а затем обновить инфраструктуру (пункты 6-11) в отдельном
+    коммите или PR.

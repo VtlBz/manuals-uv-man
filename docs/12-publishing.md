@@ -7,34 +7,34 @@
 Для сборки пакета необходимо наличие секции `[build-system]` в `pyproject.toml`.
 Она указывает, какой build backend использовать:
 
-=== "hatchling"
+**1. hatchling** (по умолчанию для `uv init --lib`):
 
-    ```toml
-    [build-system]
-    requires = ["hatchling"]
-    build-backend = "hatchling.build"
-    ```
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+```
 
-=== "setuptools"
+**2. setuptools** (классический бэкенд):
 
-    ```toml
-    [build-system]
-    requires = ["setuptools>=75.0", "wheel"]
-    build-backend = "setuptools.build_meta"
-    ```
+```toml
+[build-system]
+requires = ["setuptools>=82.0", "wheel"]
+build-backend = "setuptools.build_meta"
+```
 
-=== "flit"
+**3. flit** (легковесный бэкенд):
 
-    ```toml
-    [build-system]
-    requires = ["flit_core>=3.4"]
-    build-backend = "flit_core.buildapi"
-    ```
+```toml
+[build-system]
+requires = ["flit_core>=3.12"]
+build-backend = "flit_core.buildapi"
+```
 
 !!! note "Приложения vs библиотеки"
     Если вы создавали проект через `uv init`, секция `[build-system]`
-    отсутствует - проект считается приложением. Для библиотек используйте `uv
-    init --lib`, который добавит `[build-system]` автоматически.
+    отсутствует - проект считается приложением. Для библиотек используйте
+    `uv init --lib`, который добавит `[build-system]` автоматически.
 
 ### Метаданные пакета в pyproject.toml
 
@@ -63,7 +63,7 @@ classifiers = [
 | Поле | Обяз. | Описание |
 | ---- | :-----: | -------- |
 | `name` | да | Уникальное имя на PyPI |
-| `version` | да | Версия (SemVer) |
+| `version` | да | Версия в формате [PEP 440](https://peps.python.org/pep-0440/) |
 | `description` | да | Однострочное описание |
 | `authors` | рек. | Авторы пакета |
 | `license` | рек. | Лицензия проекта |
@@ -72,8 +72,7 @@ classifiers = [
 | `readme` | рек. | Путь к файлу README |
 
 !!! tip "Управление версией"
-    `uv version` позволяет обновить версию пакета
-    перед публикацией:
+    `uv version` позволяет обновить версию пакета перед публикацией:
 
     ```bash
     # Установить конкретную версию
@@ -88,8 +87,7 @@ classifiers = [
 
 ### Сборка пакета (`uv build`)
 
-Команда `uv build` создает дистрибутивы в директории
-`dist/`:
+Команда `uv build` создает дистрибутивы в директории `dist/`:
 
 ```bash
 # Сборка sdist (.tar.gz) и wheel (.whl)
@@ -113,9 +111,8 @@ dist/
   my_package-0.1.0-py3-none-any.whl  # wheel
 ```
 
-**sdist** (source distribution) - архив с исходным кодом
-и метаданными. Используется как fallback, когда wheel
-не подходит для целевой платформы.
+**sdist** (source distribution) - архив с исходным кодом и метаданными.
+Используется как fallback, когда wheel не подходит для целевой платформы.
 
 **wheel** - готовый к установке бинарный формат.
 Устанавливается быстрее, так как не требует этапа сборки.
@@ -131,9 +128,8 @@ dist/
     Иначе `uv publish` может загрузить устаревшие файлы.
 
 !!! tip "Проверка сборки без `tool.uv.sources`"
-    При публикации рекомендуется собирать с флагом
-    `--no-sources`, чтобы убедиться, что пакет соберется
-    через `pip` или другие инструменты:
+    При публикации рекомендуется собирать с флагом `--no-sources`,
+    чтобы убедиться, что пакет соберется через `pip` или другие инструменты:
 
     ```bash
     uv build --no-sources
@@ -161,14 +157,25 @@ uv publish dist/mypackage-0.1.0-py3-none-any.whl
 
 **1. Настройка TestPyPI как индекса:**
 
-```toml
-# pyproject.toml
-[[tool.uv.index]]
-name = "testpypi"
-url = "https://test.pypi.org/simple/"
-publish-url = "https://test.pypi.org/legacy/"
-explicit = true
-```
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "testpypi"
+    url = "https://test.pypi.org/simple/"
+    publish-url = "https://test.pypi.org/legacy/"
+    explicit = true
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "testpypi"
+    url = "https://test.pypi.org/simple/"
+    publish-url = "https://test.pypi.org/legacy/"
+    explicit = true
+    ```
 
 **2. Публикация на TestPyPI:**
 
@@ -196,13 +203,12 @@ uv publish
 ```
 
 !!! note "Отдельные токены"
-    TestPyPI и PyPI - разные сервисы с раздельными
-    учетными записями. Токен от одного сервиса не подходит
-    для другого.
+    TestPyPI и PyPI - разные сервисы с раздельными учетными записями.
+    Токен от одного сервиса не подходит для другого.
 
 ### Аутентификация
 
-Для публикации требуется аутентификация. uv поддерживает несколько способов:
+Для публикации требуется аутентификация. `uv` поддерживает несколько способов:
 
 ```bash
 # Через API-токен (рекомендуется для PyPI)
@@ -214,25 +220,21 @@ export UV_PUBLISH_PASSWORD="pypi-AgEI..."
 ```
 
 !!! tip "API-токены PyPI"
-    PyPI рекомендует использовать API-токены вместо пароля. Создайте токен на
-    странице [Account Settings](https://pypi.org/manage/account/) и используйте
-    его через `UV_PUBLISH_TOKEN`.
+    PyPI рекомендует использовать API-токены вместо пароля.
+    Создайте токен на странице [Account Settings](https://pypi.org/manage/account/)
+    и используйте его через `UV_PUBLISH_TOKEN`.
 
 ### Trusted Publishing (GitHub Actions)
 
-Trusted Publishing позволяет публиковать пакеты на PyPI
-из GitHub Actions без API-токенов. Аутентификация происходит
-через OpenID Connect (OIDC): GitHub подтверждает идентичность
-workflow, а PyPI доверяет этому подтверждению.
+Trusted Publishing позволяет публиковать пакеты на PyPI из GitHub Actions без
+API-токенов. Аутентификация происходит через OpenID Connect (OIDC): GitHub
+подтверждает идентичность workflow, а PyPI доверяет этому подтверждению.
 
 **Настройка:**
 
-1. На PyPI откройте настройки проекта: *Publishing* ->
-   *Add a new publisher*.
-2. Укажите владельца и имя репозитория, имя workflow-файла,
-   имя environment (`pypi`).
-3. В настройках GitHub-репозитория создайте environment
-   `pypi`: *Settings* -> *Environments*.
+1. На PyPI откройте настройки проекта: *Publishing* -> *Add a new publisher*.
+2. Укажите владельца и имя репозитория, имя workflow-файла, имя environment (`pypi`).
+3. В настройках GitHub-репозитория создайте environment `pypi`: *Settings* -> *Environments*.
 
 **Пример workflow:**
 
@@ -281,24 +283,32 @@ git push --tags
 !!! tip "Преимущества Trusted Publishing"
     - Не нужно создавать и хранить API-токены.
     - Невозможна утечка токена через логи CI.
-    - PyPI привязывает публикацию к конкретному
-      репозиторию и workflow.
+    - PyPI привязывает публикацию к конкретному репозиторию и workflow.
 
 ### Приватные регистри
 
-uv поддерживает публикацию в приватные регистри
-(Artifactory, GitLab Package Registry,
-AWS CodeArtifact и др.).
+`uv` поддерживает публикацию в приватные регистри
+(Artifactory, GitLab Package Registry, AWS CodeArtifact и др.).
 
 **Настройка индекса с `publish-url`:**
 
-```toml
-# pyproject.toml
-[[tool.uv.index]]
-name = "company"
-url = "https://registry.company.com/simple/"
-publish-url = "https://registry.company.com/upload/"
-```
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "company"
+    url = "https://registry.company.com/simple/"
+    publish-url = "https://registry.company.com/upload/"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company"
+    url = "https://registry.company.com/simple/"
+    publish-url = "https://registry.company.com/upload/"
+    ```
 
 **Публикация:**
 
@@ -327,24 +337,21 @@ uv publish --index company
 
 **Интеграция с keyring:**
 
-uv поддерживает получение учетных данных через `keyring`
-при публикации:
+`uv` поддерживает получение учетных данных через `keyring` при публикации:
 
 ```bash
 uv publish --index company \
     --keyring-provider subprocess
 ```
 
-Флаг `--keyring-provider subprocess` указывает uv
-использовать CLI-утилиту `keyring` для получения
-учетных данных. Альтернативно задается через переменную
-`UV_KEYRING_PROVIDER`.
+Флаг `--keyring-provider subprocess` указывает `uv` использовать
+CLI-утилиту `keyring` для получения учетных данных. Альтернативно
+задается через переменную `UV_KEYRING_PROVIDER`.
 
 !!! note "Повторная публикация"
-    Если загрузка прервалась, `uv publish` с `--check-url`
-    пропустит уже загруженные файлы. При использовании
-    `--index` URL индекса применяется как check URL
-    автоматически.
+    Если загрузка прервалась, `uv publish` с `--check-url` пропустит
+    уже загруженные файлы. При использовании `--index` URL индекса
+    применяется как check URL автоматически.
 
 ### Полный цикл публикации
 

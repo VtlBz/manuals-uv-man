@@ -4,7 +4,7 @@
 
 ## Иерархия конфигурации
 
-uv поддерживает несколько уровней конфигурации. При наличии одной и той же
+`uv` поддерживает несколько уровней конфигурации. При наличии одной и той же
 настройки на нескольких уровнях действует приоритет - более специфичный источник
 перекрывает более общий.
 
@@ -14,19 +14,23 @@ uv поддерживает несколько уровней конфигура
 | --------- | -------- | ------ |
 | 1 (высший) | Флаги командной строки | `uv sync --python 3.12` |
 | 2 | Переменные окружения `UV_*` | `UV_PYTHON=3.12` |
-| 3 | Проектная конфигурация (uv.toml) | `./uv.toml` или `./pyproject.toml` |
+| 3 | Проектная конфигурация | `./uv.toml` (приоритет) или `./pyproject.toml` (секция `[tool.uv]`) |
 | 4 | Пользовательская конфигурация | `~/.config/uv/uv.toml` |
 | 5 (низший) | Системная конфигурация | `/etc/uv/uv.toml` |
 
 !!! warning "uv.toml vs pyproject.toml на уровне проекта"
-    Если в директории проекта существуют **оба файла** - `uv.toml` и
-    `pyproject.toml` с секцией `[tool.uv]`, то **`uv.toml` имеет приоритет**, а
-    секция `[tool.uv]` в `pyproject.toml` **игнорируется**. Не используйте оба
-    источника одновременно.
+    Если в директории проекта существуют **оба файла** - `uv.toml` и `pyproject.toml`
+    с секцией `[tool.uv]`, то **`uv.toml` имеет приоритет**, а секция `[tool.uv]`
+    в `pyproject.toml` **игнорируется полностью** - включая непересекающиеся
+    настройки. **Не используйте оба источника одновременно**.
+
+    **Исключение:** секция `[tool.uv.sources]` всегда читается из `pyproject.toml`,
+    даже при наличии `uv.toml`. Это сделано намеренно - источники зависимостей
+    привязаны к проекту и не должны расходиться между машинами.
 
 ### Пути к конфигурационным файлам
 
-=== "Linux / macOS"
+=== "Linux / WSL 2 / macOS"
 
     | Уровень | Путь |
     | ------- | ---- |
@@ -49,93 +53,12 @@ uv поддерживает несколько уровней конфигура
 
 ---
 
-## Конфигурация проекта в pyproject.toml
-
-Для большинства проектов все настройки uv удобно хранить в `pyproject.toml`
-рядом с конфигурацией других инструментов.
-
-### Секция [tool.uv]
-
-Основные настройки:
-
-```toml
-[tool.uv]
-# Предпочтение версии Python
-# managed      - предпочитать managed Python (по умолчанию)
-# system       - предпочитать системный/pyenv Python
-# only-managed - использовать ТОЛЬКО managed Python
-# only-system  - использовать ТОЛЬКО системный Python
-python-preference = "managed"
-
-# Автоматическое скачивание Python
-# automatic - скачивать при необходимости (по умолчанию)
-# manual    - скачивать только по явному запросу
-# never     - никогда не скачивать, ошибка если не найден
-python-downloads = "automatic"
-```
-
-### Индексы пакетов [[tool.uv.index]]
-
-Для подключения дополнительных или приватных индексов:
-
-```toml
-[[tool.uv.index]]
-name = "company-registry"
-url = "https://pypi.company.com/simple/"
-```
-
-Подробнее об индексах - в разделе «Приватные индексы пакетов» ниже.
-
-### Источники зависимостей [tool.uv.sources]
-
-Позволяет указать альтернативные источники для конкретных пакетов:
-
-```toml
-[tool.uv.sources]
-# Git-репозиторий
-my-lib = { git = "https://github.com/company/my-lib.git", tag = "v1.2.0" }
-
-# Локальный путь (editable-установка)
-shared-utils = { path = "../shared-utils", editable = true }
-
-# Прямой URL
-special-package = { url = "https://files.company.com/special-package-1.0.tar.gz" }
-```
-
-!!! note "Sources vs dependencies"
-    Секция `[tool.uv.sources]` не заменяет `[project.dependencies]`. Пакет
-    должен быть указан в обоих местах: в `dependencies` - как требование, в
-    `sources` - как альтернативный источник. При публикации пакета `sources`
-    игнорируется, и используются стандартные индексы.
-
-### Секция [tool.uv.pip]
-
-Настройки, специфичные для pip-совместимого интерфейса (`uv pip install`, `uv
-pip compile` и т.д.):
-
-```toml
-[tool.uv.pip]
-# URL индекса для pip-интерфейсных команд
-index-url = "https://pypi.company.com/simple/"
-extra-index-url = ["https://pypi.org/simple/"]
-
-# Другие настройки pip-интерфейса
-no-build-isolation = false
-```
-
-!!! warning "Разделение настроек"
-    Секция `[tool.uv.pip]` влияет **только** на команды `uv pip *`. Команды
-    проектного интерфейса (`uv add`, `uv sync`, `uv lock`) используют
-    `[[tool.uv.index]]` для настройки индексов. Это два отдельных контекста
-    конфигурации.
-
----
-
 ## uv.toml vs pyproject.toml
 
-uv поддерживает два формата конфигурации на уровне проекта: `uv.toml` и секцию
-`[tool.uv]` в `pyproject.toml`. Настройки идентичны, отличается только
-синтаксис.
+`uv` поддерживает два формата конфигурации на уровне проекта: `uv.toml` и секцию
+`[tool.uv]` в `pyproject.toml`. Настройки и значения идентичны, отличается только
+префикс в названиях секций - в `uv.toml` отсутствует префикс `[tool.uv]` - настройки
+размещаются на верхнем уровне.
 
 ### Сравнение синтаксиса
 
@@ -168,9 +91,6 @@ uv поддерживает два формата конфигурации на 
     index-url = "https://pypi.company.com/simple/"
     ```
 
-Ключевое отличие: в `uv.toml` отсутствует префикс `[tool.uv]` - настройки
-размещаются на верхнем уровне.
-
 ### Когда использовать какой формат
 
 | Сценарий | Рекомендация |
@@ -182,18 +102,155 @@ uv поддерживает два формата конфигурации на 
 | В проекте уже есть `pyproject.toml` | `pyproject.toml` (удобнее - все в одном файле) |
 | Проект без `pyproject.toml` (standalone-скрипты) | `uv.toml` |
 
-!!! warning "Не смешивайте форматы"
-    Не создавайте `uv.toml` и `[tool.uv]` в `pyproject.toml` одновременно. Если
-    `uv.toml` существует, секция `[tool.uv]` в `pyproject.toml` полностью
-    игнорируется. Это может привести к путанице, когда вы меняете настройки в
-    `pyproject.toml`, а они не применяются.
+---
+
+## Настройки проекта
+
+Для большинства проектов все настройки `uv` удобно хранить в `pyproject.toml` рядом
+с конфигурацией других инструментов. В мануале все примеры приведены в обоих форматах.
+
+### Секция `[tool.uv]`
+
+Основные настройки:
+
+**`python-preference`** - какой Python предпочитать:
+
+| Значение | Поведение |
+| -------- | --------- |
+| `managed` | Предпочитать managed Python (по умолчанию) |
+| `system` | Предпочитать системный/pyenv Python |
+| `only-managed` | Использовать только managed Python |
+| `only-system` | Использовать только системный Python |
+
+**`python-downloads`** - автоматическое скачивание Python:
+
+| Значение | Поведение |
+| -------- | --------- |
+| `automatic` | Скачивать при необходимости (по умолчанию) |
+| `manual` | Скачивать только по явному запросу |
+| `never` | Никогда не скачивать, ошибка если не найден |
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    python-preference = "managed"
+    python-downloads = "automatic"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    python-preference = "managed"
+    python-downloads = "automatic"
+    ```
+
+### Индексы пакетов `[[tool.uv.index]]`
+
+Для подключения дополнительных или приватных индексов:
+
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "company-registry"
+    url = "https://pypi.company.com/simple/"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company-registry"
+    url = "https://pypi.company.com/simple/"
+    ```
+
+Подробнее об индексах - ниже, в разделе [Приватные индексы пакетов](#приватные-индексы-пакетов).
+
+### Источники зависимостей `[tool.uv.sources]`
+
+Позволяет указать альтернативные источники для конкретных пакетов
+(git-репозитории, локальные пути, прямые URL). Подробные примеры
+и синтаксис каждого типа см. в [разделе 5](05-dependencies.md#нестандартные-источники-зависимостей).
+
+| Тип источника | Синтаксис |
+| ------------- | --------- |
+| Git-репозиторий | `{ git = "...", tag/branch/rev = "..." }` |
+| Локальный путь | `{ path = "...", editable = true/false }` |
+| Прямой URL | `{ url = "..." }` |
+
+```toml
+[tool.uv.sources]
+my-lib = { git = "https://github.com/company/my-lib.git", tag = "v1.2.0" }
+shared-utils = { path = "../shared-utils", editable = true }
+special-package = { url = "https://files.company.com/special-package-1.0.tar.gz" }
+```
+
+!!! warning "Только `pyproject.toml`"
+    В отличие от остальных настроек `[tool.uv]`, секция `sources`
+    всегда читается из `pyproject.toml`, даже при наличии `uv.toml`.
+    Источники привязаны к проекту и не должны расходиться между машинами.
+
+!!! note "Sources vs dependencies"
+    Секция `[tool.uv.sources]` не заменяет `[project.dependencies]`. Пакет
+    должен быть указан в обоих местах: в `dependencies` - как требование, в
+    `sources` - как альтернативный источник. При публикации пакета `sources`
+    игнорируется, и используются стандартные индексы.
+
+### Секция `[tool.uv.pip]`
+
+Настройки, специфичные для pip-совместимого интерфейса (`uv pip install`,
+`uv pip compile` и т.д.). Наиболее востребованные:
+
+| Настройка | Тип | Описание |
+| --------- | --- | -------- |
+| `index-url` | строка | Основной индекс пакетов (вместо PyPI) |
+| `extra-index-url` | список | Дополнительные индексы |
+| `find-links` | список | Директории/URL для поиска пакетов |
+| `no-build-isolation` | bool | Отключить изоляцию при сборке (для пакетов с особыми build-зависимостями) |
+| `no-binary` | список | Пакеты, для которых запрещены wheel (только сборка из исходников) |
+| `only-binary` | список | Пакеты, для которых запрещена сборка (только wheel) |
+| `compile-bytecode` | bool | Компилировать `.py` в `.pyc` при установке |
+| `python-platform` | строка | Целевая платформа для кросс-компиляции |
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv.pip]
+    index-url = "https://pypi.company.com/simple/"
+    extra-index-url = ["https://pypi.org/simple/"]
+    no-build-isolation = false
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [pip]
+    index-url = "https://pypi.company.com/simple/"
+    extra-index-url = ["https://pypi.org/simple/"]
+    no-build-isolation = false
+    ```
+
+Полный список настроек: [docs.astral.sh/uv/reference/settings/#pip](https://docs.astral.sh/uv/reference/settings/#pip).
+
+!!! warning "Разделение настроек"
+    Секция `[tool.uv.pip]` влияет **только** на команды `uv pip *`.
+    Команды проектного интерфейса (`uv add`, `uv sync`, `uv lock`)
+    используют `[[tool.uv.index]]` для настройки индексов.
+    Это два отдельных контекста конфигурации.
 
 ---
 
 ## Переменные окружения
 
-uv поддерживает переменные окружения с префиксом `UV_` для всех основных
+`uv` поддерживает переменные окружения с префиксом `UV_` для всех основных
 настроек. Они удобны для CI/CD, Docker и временного изменения поведения.
+
+!!! note "Булевые переменные"
+    Булевые переменные (`UV_FROZEN`, `UV_LOCKED` и др.) принимают значения
+    `1` / `true` для включения и `0` / `false` для выключения. Пустая строка
+    (`UV_FROZEN=''`) вызовет ошибку - для сброса используйте `unset UV_FROZEN`
+    или `env -u UV_FROZEN uv ...`.
 
 ### Управление Python
 
@@ -281,18 +338,28 @@ uv поддерживает переменные окружения с преф�
 
 ## Приватные индексы пакетов
 
-Если ваша команда использует внутренний реестр пакетов, uv поддерживает его
-подключение с гибкой настройкой приоритетов и аутентификации.
+Если ваша команда использует внутренний реестр пакетов, `uv` поддерживает
+его подключение с гибкой настройкой приоритетов и аутентификации.
 
 ### Добавление индекса
 
-Базовая конфигурация в `pyproject.toml`:
+Базовая конфигурация:
 
-```toml
-[[tool.uv.index]]
-name = "company-registry"
-url = "https://pypi.company.com/simple/"
-```
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "company-registry"
+    url = "https://pypi.company.com/simple/"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company-registry"
+    url = "https://pypi.company.com/simple/"
+    ```
 
 По умолчанию этот индекс будет использоваться **в дополнение** к PyPI. uv будет
 искать пакеты сначала в добавленных индексах (в порядке объявления), затем в
@@ -302,68 +369,123 @@ PyPI.
 
 Если вы хотите, чтобы ваш индекс использовался **вместо** PyPI по умолчанию:
 
-```toml
-[[tool.uv.index]]
-name = "company"
-url = "https://pypi.company.com/simple/"
-default = true
-```
+=== "pyproject.toml"
 
-С `default = true` этот индекс заменяет PyPI. Если пакет не найден в нем, uv
-**не будет** искать его на PyPI (если только PyPI не добавлен отдельно как
-дополнительный индекс).
+    ```toml
+    [[tool.uv.index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+    default = true
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+    default = true
+    ```
+
+С `default = true` этот индекс заменяет PyPI. Дефолтный индекс может быть
+только один - если `default = true` указан у нескольких, используется последний
+объявленный. Дефолтный индекс всегда имеет **наименьший приоритет** - к нему
+обращаются, только если пакет не найден в остальных индексах.
 
 ### Флаг explicit - индекс только для определенных пакетов
 
-Для специализированных индексов (например, PyTorch с CUDA-сборками) используйте
-`explicit`:
+Для специализированных индексов (например, PyTorch с CUDA-сборками)
+используйте `explicit`. Настройка требует двух шагов:
 
-```toml
-[[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu118"
-explicit = true
-```
+**Шаг 1.** Объявить индекс с флагом `explicit = true`:
 
-Индекс с `explicit = true` используется **только** для пакетов, которые явно
-ссылаются на него через `[tool.uv.sources]`:
+=== "pyproject.toml"
 
-```toml
-[tool.uv.sources]
-torch = { index = "pytorch" }
-torchvision = { index = "pytorch" }
-```
+    ```toml
+    [[tool.uv.index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+    ```
 
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+    ```
+
+**Шаг 2.** Привязать конкретные пакеты к этому индексу через `[tool.uv.sources]`:
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv.sources]
+    torch = { index = "pytorch" }
+    torchvision = { index = "pytorch" }
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [sources]
+    torch = { index = "pytorch" }
+    torchvision = { index = "pytorch" }
+    ```
+
+Индекс с `explicit = true` используется **только** для пакетов, которые
+явно ссылаются на него через `[tool.uv.sources]`. Без привязки в `sources`
+пакеты из `explicit`-индекса никогда не будут установлены - `uv` не обращается
+к нему при обычном поиске.
 Это предотвращает случайную установку пакетов из неожиданных индексов.
 
 ### Пример комплексной конфигурации
 
-```toml
-[project]
-name = "ml-service"
-version = "1.0.0"
-requires-python = ">=3.12"
-dependencies = [
-    "flask>=3.1",
-    "torch>=2.5",
-    "company-ml-utils>=0.3",
-]
+=== "pyproject.toml"
 
-# Внутренний регистри с корпоративными пакетами
-[[tool.uv.index]]
-name = "company"
-url = "https://pypi.company.com/simple/"
+    ```toml
+    [project]
+    name = "ml-service"
+    version = "1.0.0"
+    requires-python = ">=3.12"
+    dependencies = [
+        "flask>=3.1",
+        "torch>=2.11",
+        "company-ml-utils>=0.3",
+    ]
 
-# Индекс PyTorch с CUDA-сборками (explicit - только для torch/torchvision)
-[[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu118"
-explicit = true
+    [[tool.uv.index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
 
-[tool.uv.sources]
-torch = { index = "pytorch" }
-torchvision = { index = "pytorch" }
-```
+    [[tool.uv.index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+
+    [tool.uv.sources]
+    torch = { index = "pytorch" }
+    torchvision = { index = "pytorch" }
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+
+    [[index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+
+    [sources]
+    torch = { index = "pytorch" }
+    torchvision = { index = "pytorch" }
+    ```
 
 ### Аутентификация
 
@@ -405,27 +527,38 @@ machine pypi.company.com
 chmod 600 ~/.netrc
 ```
 
-uv автоматически читает `.netrc` при обращении к хостам, указанным в файле.
+При обращении к индексу, требующему аутентификации, `uv` автоматически ищет
+подходящие учетные данные в `.netrc` по имени хоста.
 
 #### Способ 3. Интеграция с keyring
 
-uv поддерживает Python-пакет `keyring` для безопасного хранения учетных данных:
+`uv` поддерживает Python-пакет `keyring` для безопасного хранения учетных данных:
 
 ```bash
 # Установка keyring
 uv tool install keyring
 
-# Сохранение учетных данных
+# Сохранение учетных данных (пароль будет запрошен интерактивно)
 keyring set https://pypi.company.com/simple/ deploy-user
 ```
 
 #### Способ 4. Учетные данные в URL (не рекомендуется)
 
-```toml
-[[tool.uv.index]]
-name = "company"
-url = "https://user:password@pypi.company.com/simple/"
-```
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "company"
+    url = "https://user:password@pypi.company.com/simple/"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company"
+    url = "https://user:password@pypi.company.com/simple/"
+    ```
 
 !!! warning "Небезопасно"
     Встраивание учетных данных в URL **крайне не рекомендуется**, так как они
@@ -436,20 +569,30 @@ url = "https://user:password@pypi.company.com/simple/"
 ### Индексы для pip-интерфейса
 
 Настройки индексов в `[[tool.uv.index]]` используются только для проектных
-команд (`uv add`, `uv sync`, `uv lock`). Для pip-совместимого интерфейса (`uv
-pip install`, `uv pip compile`) настройте индексы отдельно:
+команд (`uv add`, `uv sync`, `uv lock`). Для pip-совместимого интерфейса
+(`uv pip install`, `uv pip compile`) настройте индексы отдельно:
 
-```toml
-[tool.uv.pip]
-index-url = "https://pypi.company.com/simple/"
-extra-index-url = ["https://pypi.org/simple/"]
-```
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv.pip]
+    index-url = "https://pypi.company.com/simple/"
+    extra-index-url = ["https://pypi.org/simple/"]
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [pip]
+    index-url = "https://pypi.company.com/simple/"
+    extra-index-url = ["https://pypi.org/simple/"]
+    ```
 
 ---
 
 ## Управление кешем
 
-uv использует глобальный кеш для хранения загруженных пакетов, скомпилированных
+`uv` использует глобальный кеш для хранения загруженных пакетов, скомпилированных
 wheel-файлов и метаданных. Это значительно ускоряет повторные операции.
 
 ### Расположение кеша
@@ -463,7 +606,7 @@ uv cache dir
 
 | Платформа | Путь |
 | --------- | ---- |
-| Linux | `~/.cache/uv/` |
+| Linux / WSL 2 | `~/.cache/uv/` |
 | macOS | `~/Library/Caches/uv/` |
 | Windows | `%LOCALAPPDATA%\uv\cache\` |
 
@@ -475,9 +618,9 @@ export UV_CACHE_DIR="/opt/uv-cache"
 
 ### Как работает кеш
 
-uv хранит пакеты в кеше **глобально** - один экземпляр пакета на всю систему. В
-виртуальные окружения проектов создаются ссылки (hardlink или symlink) на файлы
-из кеша. Это обеспечивает:
+`uv` хранит пакеты в кеше **глобально** - один экземпляр пакета на всю систему.
+В виртуальные окружения проектов создаются ссылки (hardlink или symlink) на
+файлы из кеша. Это обеспечивает:
 
 - экономию дискового пространства - пакет хранится один раз, даже если
   используется в 10 проектах;
@@ -495,13 +638,21 @@ uv хранит пакеты в кеше **глобально** - один эк�
 # Задать режим ссылок глобально
 export UV_LINK_MODE=copy
 
-# Или в pyproject.toml
+# Или в конфигурации проекта
 ```
 
-```toml
-[tool.uv]
-link-mode = "copy"
-```
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    link-mode = "copy"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    link-mode = "copy"
+    ```
 
 !!! tip "Docker и UV_LINK_MODE"
     В многослойных Docker-сборках часто кеш и файловая система проекта находятся
@@ -536,16 +687,16 @@ du -sh "$(uv cache dir)"
 
 !!! tip "Периодическая очистка"
     Команда `uv cache prune` безопасна для регулярного использования - она
-    удаляет только записи, которые не используются ни одним из проектов. Полная
-    очистка (`uv cache clean`) потребует повторной загрузки пакетов при
-    следующем `uv sync`.
+    удаляет только записи, которые не используются ни одним из проектов.
+    Полная очистка (`uv cache clean`) потребует повторной загрузки пакетов
+    при следующем `uv sync`.
 
 ---
 
 ## Отключение конфигурации (--no-config)
 
 Флаг `--no-config` полностью отключает чтение конфигурационных файлов всех
-уровней. uv будет использовать только значения по умолчанию, переменные
+уровней. `uv` будет использовать только значения по умолчанию, переменные
 окружения и флаги командной строки.
 
 ```bash
@@ -561,5 +712,4 @@ uv lock --no-config --verbose
 - диагностики проблем с конфигурацией - если команда работает с `--no-config`,
   но не без него, проблема в конфигурационном файле;
 - воспроизведения поведения на "чистой" системе;
-- CI/CD, где вы хотите полностью контролировать настройки через переменные
-  окружения.
+- CI/CD, где вы хотите полностью контролировать настройки через переменные окружения.

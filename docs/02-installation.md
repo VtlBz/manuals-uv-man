@@ -162,7 +162,7 @@ brew install uv
 uv --version
 ```
 
-Ожидаемый вывод (номер версии будет отличаться):
+Ожидаемый вывод (номер версии может отличаться):
 
 ```text
 uv 0.11.7 (4d4cd7037 2025-05-02)
@@ -210,7 +210,7 @@ Standalone-установщик размещает бинарные файлы
 
 | Платформа | Директория по умолчанию |
 | --------- | ----------------------- |
-| Linux / macOS | `~/.local/bin/` |
+| Linux / WSL 2 / macOS | `~/.local/bin/` |
 | Windows | `%USERPROFILE%\.local\bin\` |
 
 !!! note "Старые версии"
@@ -256,10 +256,17 @@ Standalone-установщик размещает бинарные файлы
 
 После изменения перезапустите терминал и проверьте:
 
-```bash
-which uv    # Linux / macOS
-where uv    # Windows
-```
+=== "Linux / WSL 2 / macOS"
+
+    ```bash
+    which uv
+    ```
+
+=== "Windows"
+
+    ```powershell
+    where uv
+    ```
 
 ---
 
@@ -272,37 +279,46 @@ where uv    # Windows
 
 === "bash"
 
-    Для текущей сессии:
+    Сгенерировать файл автодополнения:
 
     ```bash
-    eval "$(uv generate-shell-completion bash)"
+    mkdir -p ~/.local/share/uv
+    uv generate-shell-completion bash \
+        > ~/.local/share/uv/uv.bash-completion
     ```
 
-    Для постоянной активации:
+    Подключить в `~/.bashrc`:
 
     ```bash
-    echo 'eval "$(uv generate-shell-completion bash)"' >> ~/.bashrc
+    echo 'source ~/.local/share/uv/uv.bash-completion' \
+        >> ~/.bashrc
     ```
 
 === "zsh"
 
-    Для текущей сессии:
+    Сгенерировать файл автодополнения:
 
     ```bash
-    eval "$(uv generate-shell-completion zsh)"
+    mkdir -p ~/.local/share/uv
+    uv generate-shell-completion zsh \
+        > ~/.local/share/uv/_uv
     ```
 
-    Для постоянной активации:
+    Подключить в `~/.zshrc` (добавить путь в `fpath`):
 
     ```bash
-    echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
+    echo 'fpath=(~/.local/share/uv $fpath)' >> ~/.zshrc
+    echo 'autoload -Uz compinit && compinit' >> ~/.zshrc
     ```
 
 === "fish"
 
     ```fish
-    uv generate-shell-completion fish | source > ~/.config/fish/completions/uv.fish
+    uv generate-shell-completion fish \
+        > ~/.config/fish/completions/uv.fish
     ```
+
+    fish подхватывает файлы из `completions/` автоматически.
 
 === "PowerShell"
 
@@ -310,7 +326,8 @@ where uv    # Windows
     if (!(Test-Path -Path $PROFILE)) {
       New-Item -ItemType File -Path $PROFILE -Force
     }
-    Add-Content -Path $PROFILE -Value '(& uv generate-shell-completion powershell) | Out-String | Invoke-Expression'
+    Add-Content -Path $PROFILE -Value `
+      '(& uv generate-shell-completion powershell) | Out-String | Invoke-Expression'
     ```
 
 ### Настройка для uvx
@@ -321,22 +338,37 @@ where uv    # Windows
 === "bash"
 
     ```bash
-    echo 'eval "$(uvx --generate-shell-completion bash)"' >> ~/.bashrc
+    uvx --generate-shell-completion bash \
+        > ~/.local/share/uv/uvx.bash-completion
+    echo 'source ~/.local/share/uv/uvx.bash-completion' \
+        >> ~/.bashrc
     ```
 
 === "zsh"
 
     ```bash
-    echo 'eval "$(uvx --generate-shell-completion zsh)"' >> ~/.zshrc
+    uvx --generate-shell-completion zsh \
+        > ~/.local/share/uv/_uvx
     ```
+
+    Путь `~/.local/share/uv` уже добавлен в `fpath`
+    при настройке `uv` выше.
 
 === "fish"
 
     ```fish
-    uvx --generate-shell-completion fish | source > ~/.config/fish/completions/uvx.fish
+    uvx --generate-shell-completion fish \
+        > ~/.config/fish/completions/uvx.fish
     ```
 
-После внесения изменений перезапустите терминал или перезагрузите конфигурацию:
+=== "PowerShell"
+
+    ```powershell
+    Add-Content -Path $PROFILE -Value `
+      '(& uvx --generate-shell-completion powershell) | Out-String | Invoke-Expression'
+    ```
+
+После настройки перезапустите терминал или перезагрузите конфигурацию:
 
 ```bash
 source ~/.bashrc   # for bash
@@ -359,8 +391,7 @@ source ~/.zshrc    # for zsh
 uv self update
 ```
 
-Для установки конкретной версии (в том числе
-откат на более старую):
+Для установки конкретной версии (в том числе откат на более старую):
 
 ```bash
 uv self update 0.11.0
@@ -383,11 +414,19 @@ uv self update 0.11.0
     ```
 
 !!! note "Переменная UV_NO_MODIFY_PATH"
-    При обновлении `uv self update` повторно запускает установщик, который может
-    модифицировать ваши shell-профили. Чтобы отключить это поведение:
+    При обновлении `uv self update` повторно запускает
+    установщик, который может модифицировать ваши
+    shell-профили (`.bashrc`, `.zshrc`). Чтобы отключить
+    это поведение, задайте переменную окружения inline:
 
     ```bash
     UV_NO_MODIFY_PATH=1 uv self update
+    ```
+
+    Для постоянного эффекта добавьте в профиль шелла:
+
+    ```bash
+    export UV_NO_MODIFY_PATH=1
     ```
 
 ---
@@ -413,7 +452,7 @@ rm -r "$(uv tool dir)"
 
 ### Шаг 2: Удаление бинарных файлов
 
-=== "Linux / macOS"
+=== "Linux / WSL 2 / macOS"
 
     ```bash
     rm ~/.local/bin/uv ~/.local/bin/uvx
@@ -427,17 +466,19 @@ rm -r "$(uv tool dir)"
     rm $HOME\.local\bin\uvw.exe
     ```
 
-=== "pip"
+Если `uv` был установлен через пакетный менеджер:
 
-    ```bash
-    pip uninstall uv
-    ```
+**1. pip** (менеджер Python-пакетов):
 
-=== "Homebrew"
+```bash
+pip uninstall uv
+```
 
-    ```bash
-    brew uninstall uv
-    ```
+**2. Homebrew** (macOS):
+
+```bash
+brew uninstall uv
+```
 
 ### Шаг 3: Очистка shell-профилей (опционально)
 

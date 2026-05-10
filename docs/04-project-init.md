@@ -5,7 +5,7 @@
 ## Команда `uv init`
 
 Команда `uv init` создает новый Python-проект со всеми необходимыми файлами. Это
-аналог `npm init` в мире Node.js или `cargo init` в Rust.
+аналог `npm init` в мире **Node.js** или `cargo init` в **Rust**.
 
 ### Базовое использование
 
@@ -20,8 +20,24 @@ uv init myproject
 Initialized project `myproject` at `/home/user/myproject`
 ```
 
-Если вы уже находитесь в нужной директории,
-можно инициализировать проект на месте:
+Аргумент `myproject` определяет:
+
+- имя директории, которая будет создана;
+- значение `name` в `pyproject.toml`;
+- prompt виртуального окружения (в `.venv/pyvenv.cfg`) -
+  при активации терминал покажет `(myproject)`, а не `(.venv)`.
+
+Также `uv init` автоматически выполняет `git init` и создает `.gitignore`
+(с записью `.venv/`). Remote-репозиторий (origin) не добавляется - его
+нужно указать вручную:
+
+```bash
+git remote add origin git@github.com:user/myproject.git
+```
+
+Чтобы отключить инициализацию git, используйте флаг `--no-vcs`.
+
+Если вы уже находитесь в нужной директории, можно инициализировать проект на месте:
 
 ```bash
 # Инициализация в текущей директории
@@ -29,62 +45,64 @@ mkdir myproject && cd myproject
 uv init
 ```
 
+Без аргумента `uv init` берет имя проекта из имени текущей директории.
+В данном случае результат идентичен: `name = "myproject"`, `prompt = myproject`.
+
 ### Типы проектов: приложение vs библиотека
 
-uv поддерживает два типа проектов, отличающихся структурой и назначением.
+`uv` поддерживает два типа проектов, отличающихся структурой и назначением.
 
-=== "Приложение (--app)"
+**1. Приложение** (`--app`):
 
-    ```bash
-    # Create an application project
-    uv init --app myapp
-    ```
+```bash
+# Создание проекта-приложения
+uv init --app myapp
+```
 
-    Приложение - это проект, который запускается, но не публикуется как
-    пакет в PyPI. Характерные черты:
+Приложение - это проект, который запускается, но не публикуется как пакет в PyPI.
+Характерные черты:
 
-    - Плоская структура: `main.py` (или `hello.py`) в корне проекта.
-    - Нет секции `[build-system]` в `pyproject.toml`.
-    - Типичные примеры: веб-сервисы, CLI-утилиты, скрипты
-      автоматизации, data-пайплайны.
+- Плоская структура: `main.py` (или `hello.py`) в корне проекта.
+- Нет секции `[build-system]` в `pyproject.toml`.
+- Типичные примеры: веб-сервисы, CLI-утилиты, скрипты автоматизации, data-пайплайны.
 
-    Структура:
+Структура:
 
-    ```text
-    myapp/
-    ├── .python-version
-    ├── README.md
-    ├── hello.py
-    └── pyproject.toml
-    ```
+```text
+myapp/
+├── .python-version
+├── README.md
+├── hello.py
+└── pyproject.toml
+```
 
-=== "Библиотека (--lib)"
+**2. Библиотека** (`--lib`):
 
-    ```bash
-    # Create a library project
-    uv init --lib mylib
-    ```
+```bash
+# Создание проекта-библиотеки
+uv init --lib mylib
+```
 
-    Библиотека - это проект, предназначенный для публикации и установки другими
-    разработчиками. Характерные черты:
+Библиотека - это проект, предназначенный для публикации и установки другими разработчиками.
+Характерные черты:
 
-    - `src/`-layout: код лежит в `src/mylib/`.
-    - Есть секция `[build-system]` с указанием бэкенда сборки.
-    - Включает `py.typed` для поддержки type checking.
-    - Типичные примеры: SDK, утилитарные библиотеки, фреймворки.
+- `src/`-layout: код лежит в `src/mylib/`.
+- Есть секция `[build-system]` с указанием бэкенда сборки.
+- Включает `py.typed` для поддержки type checking.
+- Типичные примеры: SDK, утилитарные библиотеки, фреймворки.
 
-    Структура:
+Структура:
 
-    ```text
-    mylib/
-    ├── .python-version
-    ├── README.md
-    ├── pyproject.toml
-    └── src/
-        └── mylib/
-            ├── __init__.py
-            └── py.typed
-    ```
+```text
+mylib/
+├── .python-version
+├── README.md
+├── pyproject.toml
+└── src/
+    └── mylib/
+        ├── __init__.py
+        └── py.typed
+```
 
 ### Упакованное приложение (`--package`)
 
@@ -93,9 +111,9 @@ uv поддерживает два типа проектов, отличающи
 uv init --package mycli
 ```
 
-Упакованное приложение - гибрид: проект, который
-запускается как программа, но оформлен как
-устанавливаемый пакет. Характерные черты:
+Упакованное приложение - гибрид: проект, который запускается как программа,
+но оформлен как устанавливаемый пакет.
+Характерные черты:
 
 - `src/`-layout, как у библиотеки.
 - Есть секция `[build-system]` в `pyproject.toml`.
@@ -123,8 +141,7 @@ mycli/
 mycli = "mycli:main"
 ```
 
-После установки через `uv tool install .` команда
-`mycli` будет доступна в `PATH`.
+После установки через `uv tool install .` команда `mycli` будет доступна в `PATH`.
 
 ### Сравнительная таблица шаблонов
 
@@ -139,7 +156,7 @@ mycli = "mycli:main"
     Если вы пишете сервис, скрипт или приложение, которое будет запускаться
     напрямую, - выбирайте `--app`. Если вы создаете пакет, который другие
     разработчики будут устанавливать через `pip install` или `uv add`, -
-    выбирайте `--lib`. По умолчанию (без флагов) uv создает приложение.
+    выбирайте `--lib`. По умолчанию (без флагов) `uv` создает приложение.
 
 ### Указание версии Python
 
@@ -189,8 +206,7 @@ uv init --author-from auto myproject
 uv init .
 ```
 
-Флаги можно комбинировать между собой и с `--app`,
-`--lib`, `--package`:
+Флаги можно комбинировать между собой и с `--app`, `--lib`, `--package`:
 
 ```bash
 uv init --lib --no-readme --python 3.12 mylib
@@ -200,14 +216,13 @@ uv init --lib --no-readme --python 3.12 mylib
 
 ## Анатомия `pyproject.toml`
 
-Файл `pyproject.toml` - центральный конфигурационный файл Python-проекта. uv
-использует его как единственный источник правды о
-проекте, его зависимостях и настройках.
+Файл `pyproject.toml` - центральный конфигурационный файл Python-проекта.
+`uv` использует его как единственный источник правды о проекте,
+его зависимостях и настройках.
 
 ### Секция `[project]`
 
-Основные метаданные проекта, описанные стандартом
-[PEP 621](https://peps.python.org/pep-0621/):
+Основные метаданные проекта, описанные стандартом [PEP 621](https://peps.python.org/pep-0621/):
 
 ```toml
 [project]
@@ -217,9 +232,9 @@ description = "My awesome application"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.115",
+    "fastapi[standard]>=0.136",
     "pydantic>=2.0",
-    "httpx>=0.27",
+    "httpx>=0.28",
 ]
 ```
 
@@ -234,43 +249,35 @@ dependencies = [
 
 ### Секция `[dependency-groups]` (PEP 735)
 
-Группы зависимостей для разработки. Это относительно новый стандарт
-([PEP 735](https://peps.python.org/pep-0735/)), который uv поддерживает как
-основной способ организации dev-зависимостей:
+Группы зависимостей для разработки. Это относительно новый стандарт ([PEP 735](https://peps.python.org/pep-0735/)),
+который `uv` поддерживает как основной способ организации dev-зависимостей:
 
 ```toml
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "ruff>=0.8",
-    "mypy>=1.13",
+    "pytest>=9.0",
+    "ruff>=0.15",
+    "mypy>=2.0",
 ]
 test = [
-    "pytest>=8.0",
-    "pytest-cov>=6.0",
-    "pytest-asyncio>=0.24",
+    "pytest>=9.0",
+    "pytest-cov>=7.1",
+    "pytest-asyncio>=1.3",
 ]
 lint = [
-    "ruff>=0.8",
-    "mypy>=1.13",
+    "ruff>=0.15",
+    "mypy>=2.0",
 ]
 docs = [
-    "mkdocs-material>=9.5",
+    "mkdocs-material>=9.7",
 ]
 ```
 
-Группы можно использовать по отдельности или комбинировать:
+По умолчанию `uv sync` устанавливает `[project.dependencies]` и группу `dev`.
+Это поведение можно изменить через настройку `default-groups` в `[tool.uv]`.
 
-```bash
-# Синхронизация со всеми dev-зависимостями
-uv sync
-
-# Синхронизация с дополнительной группой test
-uv sync --group test
-
-# Синхронизация только группы lint
-uv sync --only-group lint
-```
+Подробнее об управлении группами при установке (`uv sync`, `default-groups`,
+`--no-dev`, `--group`, `--only-group`) - в [разделе 5](05-dependencies.md#группы-зависимостей).
 
 ### Секция `[project.optional-dependencies]`
 
@@ -279,8 +286,8 @@ uv sync --only-group lint
 
 ```toml
 [project.optional-dependencies]
-ml = ["torch>=2.0", "transformers>=4.40"]
-postgres = ["asyncpg>=0.29", "psycopg[binary]>=3.1"]
+ml = ["torch>=2.11", "transformers>=5.8"]
+postgres = ["asyncpg>=0.31", "psycopg[binary]>=3.3"]
 all = ["mylib[ml]", "mylib[postgres]"]
 ```
 
@@ -302,26 +309,35 @@ uv add "mylib[ml]"
 
 Настройки, специфичные для uv:
 
-```toml
-[tool.uv]
-# Стратегия разрешения зависимостей
-resolution = "highest"
+| Параметр | Назначение |
+| -------- | ---------- |
+| `resolution` | Стратегия выбора версий: `highest` (по умолчанию), `lowest`, `lowest-direct` |
+| `override-dependencies` | Принудительная замена версий транзитивных зависимостей |
+| `constraint-dependencies` | Дополнительные ограничения версий без установки |
+| `default-groups` | Группы, устанавливаемые по умолчанию при `uv sync` |
 
-# Принудительная установка версий для транзитивных зависимостей
-override-dependencies = [
-    "urllib3>=2.0",
-]
+Пример:
 
-# Добавление ограничений без установки
-constraint-dependencies = [
-    "numpy<2.0",
-]
+=== "pyproject.toml"
 
-# Группы по умолчанию для `uv sync`
-default-groups = ["dev", "test"]
-```
+    ```toml
+    [tool.uv]
+    resolution = "highest"
+    override-dependencies = ["urllib3>=2.0"]
+    constraint-dependencies = ["numpy<2.0"]
+    default-groups = ["dev", "test"]
+    ```
 
-Подробнее о конфигурации uv - в [разделе 9](09-configuration.md).
+=== "uv.toml"
+
+    ```toml
+    resolution = "highest"
+    override-dependencies = ["urllib3>=2.0"]
+    constraint-dependencies = ["numpy<2.0"]
+    default-groups = ["dev", "test"]
+    ```
+
+Подробнее о каждом параметре - в [разделе 9](09-configuration.md).
 
 ### Секция `[build-system]`
 
@@ -333,7 +349,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 ```
 
-- **Для библиотек** (`--lib`): обязательная секция. uv по умолчанию использует
+- **Для библиотек** (`--lib`): обязательная секция. `uv` по умолчанию использует
   `hatchling`, но вы можете заменить его на `setuptools`, `flit-core`,
   `pdm-backend` или любой другой PEP 517-совместимый бэкенд.
 - **Для приложений** (`--app`): секция отсутствует, потому что
@@ -349,10 +365,10 @@ build-backend = "hatchling.build"
 name = "myapp"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["fastapi[standard]>=0.115"]
+dependencies = ["fastapi[standard]>=0.136"]
 
 [dependency-groups]
-dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13"]
+dev = ["pytest>=9.0", "ruff>=0.15", "mypy>=2.0"]
 
 [tool.ruff]
 line-length = 120
@@ -374,9 +390,8 @@ asyncio_mode = "auto"
 !!! tip "Один файл - все настройки"
     Не нужно держать отдельные `ruff.toml`, `mypy.ini`, `pytest.ini` - все
     конфигурации собраны в одном месте. Каждый инструмент читает свою секцию
-    `[tool.<name>]` и игнорирует остальные. uv работает точно так же - он читает
-    секции `[project]`, `[dependency-groups]` и
-    `[tool.uv]`, не трогая чужие настройки.
+    `[tool.<name>]` и игнорирует остальные. `uv` работает точно так же - он читает
+    секции `[project]`, `[dependency-groups]` и `[tool.uv]`, не трогая чужие настройки.
 
 ---
 
@@ -389,7 +404,7 @@ asyncio_mode = "auto"
 
 ### Формат
 
-Lockfile использует собственный формат uv (не `requirements.txt`). Файл
+Lockfile использует собственный формат `uv` (не `requirements.txt`). Файл
 человекочитаемый, но редактировать вручную его не нужно:
 
 ```toml
@@ -417,11 +432,11 @@ dependencies = [
 зависимости от платформы и момента установки.
 
 !!! note "Замена множеству requirements.txt"
-    При работе с `pip-tools` приходилось вести отдельные файлы:
-    `requirements.in` / `requirements.txt`, `requirements-dev.in` /
-    `requirements-dev.txt` и т.д. `uv.lock` заменяет их все: он содержит
-    информацию обо всех зависимостях, включая группы разработки,
-    тестирования, линтинга - все в одном файле.
+    В традиционном подходе приходилось вести отдельные файлы: `requirements.txt`,
+    `requirements-dev.txt`, `constraints.txt`. С `pip-tools` вместо них - `requirements.in`
+    и `requirements-dev.in` (`.txt` генерируется автоматически, но всё равно несколько
+    файлов). `uv.lock` заменяет их все: он содержит информацию обо всех зависимостях,
+    включая группы разработки, тестирования, линтинга - все в одном файле.
 
 ### Управление lockfile
 
@@ -445,8 +460,8 @@ uv lock --upgrade-package requests
 ### Lockfile и Git
 
 !!! warning "Коммитьте `uv.lock` в репозиторий"
-    Файл `uv.lock` **обязательно** должен быть в системе
-    контроля версий. Это гарантирует, что:
+    Файл `uv.lock` **обязательно** должен быть в системе контроля версий.
+    Это гарантирует, что:
 
     - Все члены команды работают с идентичным набором зависимостей.
     - CI/CD воспроизводит ту же среду, что и на машине разработчика.
@@ -456,7 +471,7 @@ uv lock --upgrade-package requests
 
 ### Флаги `--locked` и `--frozen` для CI
 
-Для CI-окружений важно контролировать, как uv работает с lockfile:
+Для CI-окружений важно контролировать, как `uv` работает с lockfile:
 
 ```bash
 # Ошибка, если lockfile не синхронизирован с pyproject.toml
@@ -527,14 +542,14 @@ def hello() -> str:
 3.12
 ```
 
-uv (и другие инструменты, например `pyenv`) читают этот файл, чтобы определить,
-какую версию Python использовать в проекте. При `uv run` или `uv sync` uv
-автоматически скачает нужную версию, если она еще не установлена.
+`uv` (и другие инструменты, например `pyenv`) читают этот файл, чтобы
+определить, какую версию Python использовать в проекте. Автоматическое
+скачивание недостающей версии зависит от настроек `python-preference` и
+`python-downloads` (подробнее - в [разделе 3](03-python-versions.md)).
 
 ### Виртуальное окружение `.venv`
 
-Каталог `.venv` не создается командой
-`uv init`. Он появляется при первом вызове:
+Каталог `.venv` не создается командой `uv init`. Он появляется при первом вызове:
 
 ```bash
 # Любая из этих команд создаст .venv, если его нет
@@ -557,7 +572,7 @@ uv add requests
 | `.venv/` | `uv sync` / `uv run` | Нет | Нет |
 | `hello.py` / `src/<pkg>/` | `uv init` | Да | Да |
 | `README.md` | `uv init` | Да | Да |
-| `.gitignore` | `uv init` | Можно дополнять | Да |
+| `.gitignore` | `uv init` | Да | Да |
 
 ---
 
@@ -565,14 +580,13 @@ uv add requests
 
 Частый сценарий: у команды уже есть проект с `pyproject.toml`, в котором
 настроены Ruff и mypy, но зависимости управляются через `pip` +
-`requirements.txt`. Как перейти на uv, не ломая существующие настройки?
+`requirements.txt`. Как перейти на `uv`, не ломая существующие настройки?
 
 !!! warning "`uv init` и существующий `pyproject.toml`"
-    Если в директории уже есть `pyproject.toml`, команда
-    `uv init` откажется выполняться, чтобы не перезаписать
-    существующую конфигурацию. В этом случае добавляйте
-    секции `[project]` и `[dependency-groups]`
-    в `pyproject.toml` вручную, как показано ниже.
+    Если в директории уже есть `pyproject.toml`, команда `uv init` откажется
+    выполняться, чтобы не перезаписать существующую конфигурацию. В этом случае
+    добавляйте секции `[project]` и `[dependency-groups]` в `pyproject.toml`
+    вручную, как показано ниже.
 
 ### Пример: до перехода
 
@@ -621,21 +635,21 @@ version = "1.0.0"
 description = "Our existing application"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.115",
+    "fastapi[standard]>=0.136",
     "pydantic>=2.0",
     "sqlalchemy>=2.0",
-    "httpx>=0.27",
-    "celery>=5.4",
+    "httpx>=0.28",
+    "celery>=5.6",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=6.0",
-    "pytest-asyncio>=0.24",
-    "ruff>=0.8",
-    "mypy>=1.13",
-    "pre-commit>=4.0",
+    "pytest>=9.0",
+    "pytest-cov>=7.1",
+    "pytest-asyncio>=1.3",
+    "ruff>=0.15",
+    "mypy>=2.0",
+    "pre-commit>=4.6",
 ]
 
 # --- Existing tool configs below (untouched) ---
@@ -663,26 +677,28 @@ testpaths = ["tests"]
 
 ### Шаги интеграции
 
+**1.** Добавьте секции `[project]` и `[dependency-groups]` в существующий
+`pyproject.toml` вручную (`uv init` не модифицирует существующий файл).
+
+**2.** Сгенерируйте lockfile и создайте окружение:
+
 ```bash
-# Шаг 1: добавьте секции [project] и [dependency-groups] в pyproject.toml
-# (отредактируйте вручную или пусть uv сделает это)
-
-# Шаг 2: генерация lockfile
 uv lock
-
-# Шаг 3: создание окружения и установка всего
 uv sync
+```
 
-# Шаг 4: проверка, что ruff и mypy работают
+**3.** Проверьте, что инструменты работают:
+
+```bash
 uv run ruff check .
 uv run mypy src/
 ```
 
 !!! note "Что происходит с настройками инструментов"
-    Секции `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]` остаются
-    нетронутыми. uv работает только со своими секциями (`[project]`,
-    `[dependency-groups]`, `[tool.uv]`, `[build-system]`) и
-    не изменяет чужие конфигурации.
+    Секции `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`
+    остаются нетронутыми. uv работает только со своими секциями
+    (`[project]`, `[dependency-groups]`, `[tool.uv]`, `[build-system]`)
+    и не изменяет чужие конфигурации.
 
 После успешной миграции старые файлы `requirements*.txt`
 и `requirements*.in` можно удалить.
