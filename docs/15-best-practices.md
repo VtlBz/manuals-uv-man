@@ -53,10 +53,12 @@ myproject/
 !!! warning "uv.lock обязательно в git"
     Это самое важное правило. Без `uv.lock` в репозитории каждый разработчик и
     CI-сервер может получить разные версии зависимостей. Коммитите lockfile всегда.
+    Подробнее о lockfile - в разделе [Sync-workflow](06-sync-workflow.md).
 
 ### Правила для CI/CD
 
-- Используйте `uv sync --locked` - падайте, если lockfile устарел.
+- Контролируйте целостность lockfile: `uv lock --check` + `--frozen`
+  на последующих шагах, либо `--locked` (без отдельной проверки).
 - Используйте `uv run` для запуска тестов и скриптов -
   не активируйте окружение вручную.
 - Кешируйте директорию кеша `uv` между сборками.
@@ -92,6 +94,34 @@ docs = ["mkdocs-material", "mkdocstrings[python]"]
 
 Это заставит `uv` использовать свои управляемые версии Python, а не системные,
 что устраняет проблему "у меня другая minor-версия".
+
+---
+
+## Стандарт команд для команды
+
+### Локальная разработка
+
+```bash
+uv sync
+uv add package-name
+uv run pytest
+```
+
+### CI
+
+```bash
+uv lock --check
+uv sync --frozen --all-extras --all-groups
+uv run --frozen pytest
+```
+
+### Production Docker
+
+- Pinned `uv` version (не `latest`)
+- Коммитить `uv.lock`
+- Не коммитить `.venv`
+
+Подробнее о Docker-паттернах - в разделе [Docker и CI/CD](10-docker-ci.md).
 
 ---
 
@@ -142,7 +172,7 @@ Thumbs.db
 | Создать новый проект | `uv init myproject` |
 | Создать библиотеку | `uv init --lib mylib` |
 | Синхронизировать окружение | `uv sync` |
-| Синхронизировать (strict) | `uv sync --locked` |
+| Синхронизировать (strict) | `uv sync --locked` или `uv lock --check` + `uv sync --frozen` |
 | Синхронизировать без dev | `uv sync --no-dev` |
 
 ### Зависимости
@@ -169,7 +199,7 @@ Thumbs.db
 | Запустить тесты | `uv run pytest` |
 | Запустить с покрытием | `uv run pytest --cov` |
 | Запустить инструмент (без установки) | `uvx ruff check .` |
-| Запустить инструмент конкретной версии | `uvx ruff@0.9.0 check .` |
+| Запустить инструмент конкретной версии | `uvx ruff@0.15.0 check .` |
 
 ### Python
 
@@ -199,7 +229,7 @@ Thumbs.db
 | Список установленных инструментов | `uv tool list` |
 | Обновить инструмент | `uv tool upgrade ruff` |
 | Удалить инструмент | `uv tool uninstall ruff` |
-| Обновить uv | `uv self update` |
+| Обновить uv (standalone) | `uv self update` |
 | Очистить кеш | `uv cache clean` |
 | Частично очистить кеш | `uv cache prune` |
 
@@ -252,7 +282,7 @@ Thumbs.db
 
 | Старая команда | Эквивалент uv | Примечание |
 | -------------- | ------------- | ---------- |
-| `pipx run ruff` | `uvx ruff` | Запуск без установки |
+| `pipx run ruff check .` | `uvx ruff check .` | Запуск без установки |
 | `pipx install ruff` | `uv tool install ruff` | Глобальная установка |
 | `pipx uninstall ruff` | `uv tool uninstall ruff` | Удаление |
 | `pipx upgrade ruff` | `uv tool upgrade ruff` | Обновление |
@@ -281,194 +311,6 @@ Thumbs.db
 | `twine upload dist/*` | `uv publish` | Публикация на PyPI |
 | `twine upload -r private dist/*` | `uv publish --index private` | Приватный реестр |
 | `twine check dist/*` | - | Проверка встроена в `uv build` |
-
----
-
-## FAQ: частые ошибки и решения
-
-### "No Python X.Y in PATH"
-
-**Проблема:** uv не может найти запрошенную версию Python.
-
-**Решение:**
-
-```bash
-# Установка нужной версии
-uv python install 3.12
-
-# Или, при использовании системного Python, убедитесь в его доступности
-which python3.12
-```
-
-Если используете pyenv, убедитесь, что нужная версия установлена и доступна
-через `pyenv global` или `pyenv local`.
-
----
-
-### "Resolved lockfile is not up to date"
-
-**Проблема:** `uv.lock` не соответствует `pyproject.toml`. Возникает при
-использовании `--locked` (обычно в CI).
-
-**Решение:**
-
-```bash
-# Перегенерация lockfile
-uv lock
-
-# Коммит обновленного lockfile
-git add uv.lock
-git commit -m "Update uv.lock"
-```
-
-Эта ошибка означает, что кто-то изменил зависимости в `pyproject.toml`,
-но не выполнил `uv lock`.
-
----
-
-### Ошибка парсинга .python-version (pyenv-virtualenv)
-
-**Проблема:** uv не может разобрать файл `.python-version`, потому что в нем
-записано имя виртуального окружения pyenv (например, `myproject-3.12`).
-
-**Решение:** начиная с `uv` 0.6+, такие записи игнорируются. Если используете
-более раннюю версию - обновите `uv`:
-
-```bash
-uv self update
-```
-
-Либо перезапишите `.python-version` чистой версией:
-
-```bash
-uv python pin 3.12
-```
-
----
-
-### "Package not found" при использовании приватного реестра
-
-**Проблема:** `uv` не находит пакет, который есть в корпоративном реестре.
-
-**Решение:** проверьте конфигурацию индексов в `pyproject.toml`:
-
-=== "pyproject.toml"
-
-    ```toml
-    [[tool.uv.index]]
-    name = "company-registry"
-    url = "https://pypi.company.com/simple/"
-    ```
-
-=== "uv.toml"
-
-    ```toml
-    [[index]]
-    name = "company-registry"
-    url = "https://pypi.company.com/simple/"
-    ```
-
-Убедитесь, что аутентификация настроена:
-
-```bash
-# Через переменные окружения
-export UV_INDEX_COMPANY_REGISTRY_USERNAME="user"
-export UV_INDEX_COMPANY_REGISTRY_PASSWORD="token"
-
-# Или через keyring / netrc
-```
-
----
-
-### Медленный первый запуск
-
-**Проблема:** первый `uv sync` или `uv add` работает заметно дольше последующих.
-
-**Объяснение:** при первом запуске uv скачивает пакеты и заполняет локальный
-кеш. Все последующие операции будут использовать кеш и работать значительно
-быстрее. Это нормальное поведение.
-
----
-
-### "Build backend not found"
-
-**Проблема:** при попытке собрать пакет (`uv build`) или установить его в
-editable-режиме возникает ошибка.
-
-**Решение:** добавьте секцию `[build-system]` в `pyproject.toml`:
-
-```toml
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-```
-
-Эта секция необходима для библиотек. Приложения, созданные через `uv init`,
-не имеют ее по умолчанию - это нормально, если вы не планируете собирать и
-публиковать пакет.
-
----
-
-### Кеш занимает слишком много места
-
-**Проблема:** директория кеша uv выросла до значительного размера.
-
-**Решение:**
-
-```bash
-# Удаление неиспользуемых записей кеша
-uv cache prune
-
-# Очистка всего кеша
-uv cache clean
-
-# Проверка расположения и размера кеша
-uv cache dir
-du -sh $(uv cache dir)
-```
-
-!!! tip "Регулярная очистка"
-    Команда `uv cache prune` безопасна для регулярного использования - она
-    удаляет только записи, которые больше не нужны. `uv cache clean` полностью
-    очищает кеш - следующая установка будет скачивать пакеты заново.
-
----
-
-### "Conflicting dependencies"
-
-**Проблема:** `uv` не может разрешить конфликт версий между зависимостями.
-
-**Решение:**
-
-```bash
-# Найти пакеты, вызывающие конфликт
-uv tree --invert problematic-package
-
-# Переопределить версию конкретной зависимости
-```
-
-Если конфликт нельзя разрешить штатными средствами, используйте override:
-
-=== "pyproject.toml"
-
-    ```toml
-    [tool.uv]
-    override-dependencies = [
-        "problematic-package==1.5.0",
-    ]
-    ```
-
-=== "uv.toml"
-
-    ```toml
-    override-dependencies = [
-        "problematic-package==1.5.0",
-    ]
-    ```
-
-!!! warning "Override-dependencies"
-    Переопределение версий зависимостей - крайняя мера. Используйте только когда
-    нет другого способа разрешить конфликт, и тщательно тестируйте результат.
 
 ---
 

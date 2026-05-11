@@ -1,5 +1,7 @@
 # Раздел 12. Сборка и публикация пакетов
 
+---
+
 ## Сборка и публикация пакетов
 
 ### Подготовка пакета к сборке
@@ -7,7 +9,15 @@
 Для сборки пакета необходимо наличие секции `[build-system]` в `pyproject.toml`.
 Она указывает, какой build backend использовать:
 
-**1. hatchling** (по умолчанию для `uv init --lib`):
+**1. uv_build** (по умолчанию для `uv init --lib`):
+
+```toml
+[build-system]
+requires = ["uv_build>=0.11.13,<0.12"]
+build-backend = "uv_build"
+```
+
+**2. hatchling** (альтернативный бэкенд):
 
 ```toml
 [build-system]
@@ -15,7 +25,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 ```
 
-**2. setuptools** (классический бэкенд):
+**3. setuptools** (классический бэкенд):
 
 ```toml
 [build-system]
@@ -23,7 +33,7 @@ requires = ["setuptools>=82.0", "wheel"]
 build-backend = "setuptools.build_meta"
 ```
 
-**3. flit** (легковесный бэкенд):
+**4. flit** (легковесный бэкенд):
 
 ```toml
 [build-system]
@@ -35,6 +45,7 @@ build-backend = "flit_core.buildapi"
     Если вы создавали проект через `uv init`, секция `[build-system]`
     отсутствует - проект считается приложением. Для библиотек используйте
     `uv init --lib`, который добавит `[build-system]` автоматически.
+    Подробнее о типах проектов - в разделе [Инициализация проекта](03-project-init.md).
 
 ### Метаданные пакета в pyproject.toml
 
@@ -64,7 +75,7 @@ classifiers = [
 | ---- | :-----: | -------- |
 | `name` | да | Уникальное имя на PyPI |
 | `version` | да | Версия в формате [PEP 440](https://peps.python.org/pep-0440/) |
-| `description` | да | Однострочное описание |
+| `description` | рек. | Краткое описание (рекомендуется для PyPI) |
 | `authors` | рек. | Авторы пакета |
 | `license` | рек. | Лицензия проекта |
 | `requires-python` | рек. | Минимальная версия Python |
@@ -256,9 +267,11 @@ jobs:
       id-token: write   # обязательно для OIDC
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.11.13"
 
       - run: uv build
 
@@ -372,3 +385,7 @@ uv publish --index testpypi
 # 5. Опубликуйте на PyPI
 uv publish
 ```
+
+!!! tip "Публикация в monorepo"
+    Если проект использует workspaces, можно собирать отдельный пакет через
+    `uv build --package <name>`. Подробнее о workspaces - в разделе [Workspaces](11-workspaces.md).

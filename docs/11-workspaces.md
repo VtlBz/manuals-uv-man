@@ -1,5 +1,7 @@
 # Раздел 11. Workspaces
 
+---
+
 ## Workspaces (monorepo)
 
 ### Что такое workspaces
@@ -28,7 +30,7 @@ cd my-platform
 ```
 
 Флаг `--bare` создает минимальный `pyproject.toml` без
-шаблонных файлов (`main.py`, `hello.py` и т.п.).
+шаблонных файлов (`main.py` и т.п.).
 
 **Шаг 2.** Превратить root в workspace - открыть
 `pyproject.toml` и добавить нужные секции:
@@ -94,8 +96,8 @@ uv init --package packages/my-cli
 === "uv.toml"
 
     ```toml
-    [sources]
-    my-core = { workspace = true }
+    # Привязка workspace-пакетов указывается
+    # в pyproject.toml через [tool.uv.sources]
     ```
 
 Альтернативный способ - через CLI:
@@ -216,15 +218,6 @@ myworkspace/
     lib-utils = { workspace = true }
     ```
 
-=== "uv.toml"
-
-    ```toml
-    # packages/app-api/uv.toml
-    [sources]
-    lib-core = { workspace = true }
-    lib-utils = { workspace = true }
-    ```
-
 Директива `workspace = true` указывает uv, что пакет нужно брать из workspace,
 а не из PyPI. При этом пакет устанавливается в режиме editable - изменения в
 исходниках сразу видны зависимым пакетам.
@@ -254,14 +247,6 @@ myworkspace/
     dependencies = ["pkg-a"]
 
     [tool.uv.sources]
-    pkg-a = { path = "../pkg-a", editable = true }
-    ```
-
-=== "uv.toml"
-
-    ```toml
-    # packages/pkg-b/uv.toml
-    [sources]
     pkg-a = { path = "../pkg-a", editable = true }
     ```
 
@@ -415,21 +400,12 @@ Workspace требует одного общего `uv.lock`. Если `my-api` 
 **Имя пакета vs имя каталога.**
 В `[tool.uv.sources]` нужно **имя пакета** из его `pyproject.toml`, а не имя каталога:
 
-=== "pyproject.toml"
-
-    ```toml
-    [tool.uv.sources]
-    my-lib = { workspace = true }    # correct: имя пакета из [project].name
-    my_lib = { workspace = true }    # wrong: имя каталога, не совпадает с именем пакета
-    ```
-
-=== "uv.toml"
-
-    ```toml
-    [sources]
-    my-lib = { workspace = true }    # correct: имя пакета из [project].name
-    my_lib = { workspace = true }    # wrong: имя каталога, не совпадает с именем пакета
-    ```
+```toml
+# pyproject.toml
+[tool.uv.sources]
+my-lib = { workspace = true }    # correct: имя пакета из [project].name
+my_lib = { workspace = true }    # wrong: имя каталога, не совпадает с именем пакета
+```
 
 **Префикс `./` в members.**
 Не используйте `./` в путях:

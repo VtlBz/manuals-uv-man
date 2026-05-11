@@ -171,7 +171,7 @@
 
 Позволяет указать альтернативные источники для конкретных пакетов
 (git-репозитории, локальные пути, прямые URL). Подробные примеры
-и синтаксис каждого типа см. в разделе [Нестандартные источники зависимостей](05-dependencies.md#нестандартные-источники-зависимостей).
+и синтаксис каждого типа см. в разделе [Нестандартные источники зависимостей](#нестандартные-источники-зависимостей).
 
 | Тип источника | Синтаксис |
 | ------------- | --------- |
@@ -303,8 +303,10 @@ special-package = { url = "https://files.company.com/special-package-1.0.tar.gz"
       UV_PYTHON: "3.12"           # Pin Python version
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.11.13"
       - run: uv sync
       - run: uv run pytest
     ```
@@ -319,7 +321,7 @@ special-package = { url = "https://files.company.com/special-package-1.0.tar.gz"
     ENV UV_LINK_MODE=copy
     ENV UV_PYTHON_DOWNLOADS=never
 
-    COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+    COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
     COPY pyproject.toml uv.lock ./
     RUN uv sync --no-dev --no-editable
     ```
@@ -419,21 +421,17 @@ PyPI.
 
 **Шаг 2.** Привязать конкретные пакеты к этому индексу через `[tool.uv.sources]`:
 
-=== "pyproject.toml"
+```toml
+# pyproject.toml
+[tool.uv.sources]
+torch = { index = "pytorch" }
+torchvision = { index = "pytorch" }
+```
 
-    ```toml
-    [tool.uv.sources]
-    torch = { index = "pytorch" }
-    torchvision = { index = "pytorch" }
-    ```
-
-=== "uv.toml"
-
-    ```toml
-    [sources]
-    torch = { index = "pytorch" }
-    torchvision = { index = "pytorch" }
-    ```
+!!! note "Только pyproject.toml"
+    Привязка зависимостей к источникам указывается только в `pyproject.toml`
+    через `[tool.uv.sources]`. В `uv.toml` размещаются только объявления
+    индексов (`[[index]]`) и общие настройки.
 
 Индекс с `explicit = true` используется **только** для пакетов, которые
 явно ссылаются на него через `[tool.uv.sources]`. Без привязки в `sources`
@@ -481,10 +479,6 @@ PyPI.
     name = "pytorch"
     url = "https://download.pytorch.org/whl/cu118"
     explicit = true
-
-    [sources]
-    torch = { index = "pytorch" }
-    torchvision = { index = "pytorch" }
     ```
 
 ### Аутентификация
@@ -590,6 +584,248 @@ keyring set https://pypi.company.com/simple/ deploy-user
 
 ---
 
+## Нестандартные источники зависимостей
+
+Не все зависимости размещены в PyPI. `uv` поддерживает установку
+из git-репозиториев, по прямому URL и из альтернативных индексов.
+
+!!! warning "Sources - только в `pyproject.toml`"
+    Секция `[tool.uv.sources]` всегда читается из `pyproject.toml`,
+    даже при наличии `uv.toml`. Это сделано намеренно - источники
+    зависимостей привязаны к проекту и должны быть одинаковы на
+    всех машинах. Подробнее о конфигурации см. раздел [Источники зависимостей `[tool.uv.sources]`](#источники-зависимостей-tooluvsources).
+
+### Git-источники
+
+```bash
+# Главная ветка
+uv add "git+https://github.com/encode/httpx.git"
+
+# Конкретная ветка
+uv add "git+https://github.com/encode/httpx.git@master"
+
+# Конкретный тег
+uv add "git+https://github.com/encode/httpx.git@0.28.0"
+
+# Конкретный коммит (рекомендуется для воспроизводимости)
+uv add "git+https://github.com/encode/httpx.git@a1b2c3d"
+
+# Через SSH (приватные репозитории)
+uv add "git+ssh://git@github.com/myorg/private.git"
+
+# Подкаталог в монорепозитории
+uv add "git+https://github.com/org/mono.git#subdirectory=packages/pkg"
+```
+
+В CLI после `@` указывается любой git-ref - `uv` сам определяет,
+тег это, ветка или коммит. При ручном редактировании `pyproject.toml`
+нужно явно выбрать ключ:
+
+| Ключ | Что указывает | Пример значения |
+| ---- | ------------- | --------------- |
+| `tag` | Git-тег (имя релиза) | `"v1.2.0"`, `"0.28.0"` |
+| `branch` | Ветка | `"main"`, `"develop"` |
+| `rev` | Конкретный коммит (SHA) | `"a1b2c3d4e5f6"` |
+
+Примеры записи в `pyproject.toml`:
+
+```toml
+[project]
+dependencies = [
+    "httpx",
+    "my-lib",
+    "experiments",
+]
+
+[tool.uv.sources]
+httpx = { git = "https://github.com/encode/httpx.git", tag = "0.28.0" }
+my-lib = { git = "https://github.com/company/my-lib.git", branch = "develop" }
+experiments = { git = "https://github.com/user/exp.git", rev = "a1b2c3d4" }
+```
+
+!!! tip "Воспроизводимость"
+    `tag` и `branch` могут измениться со временем (тег можно переставить,
+    ветка обновляется). Для максимальной воспроизводимости используйте
+    `rev` с полным SHA коммита.
+
+### URL-источники
+
+Установка пакета по прямому URL. Поддерживаемые форматы:
+`.whl` (wheel), `.tar.gz` и `.zip` (source distribution).
+
+```bash
+uv add "https://example.com/pkg-1.0-py3-none-any.whl"
+```
+
+```toml
+[tool.uv.sources]
+pkg = { url = "https://example.com/pkg-1.0-py3-none-any.whl" }
+```
+
+### Локальные источники (path)
+
+Установка из локального пути - директории с `pyproject.toml`
+или готового файла (`.whl`, `.tar.gz`, `.zip`):
+
+```bash
+# Директория с проектом
+uv add --editable ../shared-utils
+
+# Локальный wheel-файл
+uv add "../dist/my_lib-1.0-py3-none-any.whl"
+```
+
+```toml
+[tool.uv.sources]
+shared-utils = { path = "../shared-utils", editable = true }
+my-lib = { path = "../dist/my_lib-1.0-py3-none-any.whl" }
+```
+
+Флаг `--editable` / `editable = true` доступен только для директорий
+с проектом - изменения в исходном коде сразу видны без переустановки.
+Для файлов (`.whl`, `.tar.gz`, `.zip`) editable-установка невозможна.
+
+### Альтернативные индексы
+
+`uv` поддерживает подключение дополнительных индексов (приватных регистри,
+например Nexus, Artifactory, GitLab Package Registry и др.).
+
+По умолчанию PyPI является **дефолтным индексом** - он опрашивается последним,
+если пакет не найден в других индексах. Объявление индекса с `default = true`
+**заменяет PyPI** на указанный регистри. **Дефолтный индекс может быть только один**.
+
+Порядок поиска пакетов:
+
+1. Дополнительные индексы - в порядке объявления в конфигурации.
+2. Дефолтный индекс (PyPI или заменивший его) - всегда последний.
+
+Поведение индекса определяют флаги:
+
+| Флаг | Поведение |
+| ---- | --------- |
+| (без флагов) | Дополнительный индекс: поиск всех пакетов (PyPI остается) |
+| `explicit = true` | Только для поиска пакетов, явно привязанных через `[tool.uv.sources]` |
+| `default = true` | Заменяет PyPI как дефолтный (может быть только один) |
+
+Ниже - типовые сценарии подключения.
+
+**1. Дополнительный индекс** (PyPI + корпоративный):
+
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+    ```
+
+Поиск: `company` -> PyPI. Публичные пакеты по-прежнему загружаются с PyPI,
+корпоративные - из `company`.
+
+**2. Полная замена PyPI** (закрытая сеть, корпоративные правила):
+
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+    default = true
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+    default = true
+    ```
+
+PyPI полностью отключен. Все пакеты (включая публичные) должны быть доступны
+в корпоративном регистри. Обращений к `pypi.org` не будет.
+
+**3. Специализированный индекс** (PyTorch, CUDA):
+
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+
+    [tool.uv.sources]
+    torch = { index = "pytorch" }
+    torchvision = { index = "pytorch" }
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+    ```
+
+`torch` и `torchvision` загружаются только из `pytorch`. Остальные пакеты -
+с PyPI. Флаг `explicit` защищает от случайной установки пакетов из
+специализированного индекса.
+
+!!! note "Привязка зависимостей к источникам"
+    Привязка пакетов к индексам (`[tool.uv.sources]`) указывается
+    только в `pyproject.toml`. В `uv.toml` размещаются только общие
+    настройки и объявления индексов (`[[index]]`).
+
+**4. Комбинация** (корпоративный + специализированный + PyPI):
+
+=== "pyproject.toml"
+
+    ```toml
+    [[tool.uv.index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+
+    [[tool.uv.index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+
+    [tool.uv.sources]
+    torch = { index = "pytorch" }
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    [[index]]
+    name = "company"
+    url = "https://pypi.company.com/simple/"
+
+    [[index]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/cu118"
+    explicit = true
+    ```
+
+Поиск: `torch` -> только `pytorch`; остальные пакеты -> `company` -> PyPI.
+
+Приватные регистри обычно требуют аутентификацию.
+`uv` поддерживает несколько способов: переменные окружения, файл `.netrc`,
+интеграцию с `keyring`. Подробная настройка аутентификации с примерами
+для каждого способа - в разделе [Приватные индексы пакетов](#приватные-индексы-пакетов).
+
+---
+
 ## Управление кешем
 
 `uv` использует глобальный кеш для хранения загруженных пакетов, скомпилированных
@@ -691,6 +927,105 @@ du -sh "$(uv cache dir)"
     Полная очистка (`uv cache clean`) потребует повторной загрузки пакетов
     при следующем `uv sync`.
 
+    Диагностика проблем с кешем и таблица команд очистки -
+    в разделе [Управление кешем (диагностика)](14-troubleshooting.md#управление-кешем).
+
+---
+
+## Overrides и Constraints
+
+Иногда стандартное разрешение зависимостей не дает нужного результата. Для таких
+случаев `uv` предоставляет механизмы ручного управления.
+
+### Override-зависимости
+
+`override-dependencies` заставляет резолвер использовать указанную версию,
+игнорируя constraints других пакетов:
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    override-dependencies = [
+        "urllib3>=2.0",
+    ]
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    override-dependencies = [
+        "urllib3>=2.0",
+    ]
+    ```
+
+!!! warning "Используйте overrides осторожно"
+    Override может привести к несовместимости: если пакет A требует
+    `urllib3<2.0`, а вы форсируете `>=2.0`, пакет A может работать некорректно.
+    Применяйте overrides только когда точно знаете, что конфликт безопасен
+    (например, constraint устарел, а пакет на самом деле совместим).
+
+### Constraint-зависимости
+
+`constraint-dependencies` добавляет ограничения на версии без установки самих
+пакетов:
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    constraint-dependencies = [
+        "numpy<2.0",
+    ]
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    constraint-dependencies = [
+        "numpy<2.0",
+    ]
+    ```
+
+Это полезно, когда:
+
+- Вы знаете, что `numpy>=2.0` ломает совместимость с одной из ваших
+  зависимостей, но сам `numpy` является транзитивной зависимостью и не
+  перечислен в `[project.dependencies]`.
+- Вы хотите ограничить версию транзитивной зависимости, не добавляя ее в прямые
+  зависимости.
+
+### Сравнение override и constraint
+
+| Механизм | Что делает | Уровень силы |
+| -------- | ---------- | ------------ |
+| `override-dependencies` | Заменяет constraints **всех** пакетов на указанный | Максимальный - игнорирует чужие требования |
+| `constraint-dependencies` | Добавляет **дополнительное** ограничение поверх существующих | Мягкий - может привести к ошибке разрешения, если несовместим |
+
+!!! example "Пример: конфликт транзитивных зависимостей"
+    Ситуация: пакет `lib-a` требует `urllib3>=1.26,<2.0`, а пакет `lib-b`
+    требует `urllib3>=2.0`. `uv` не сможет разрешить этот конфликт автоматически.
+
+    Если вы точно знаете, что `lib-a` работает с `urllib3>=2.0` (просто не
+    обновил свои constraints), можно использовать override:
+
+    === "pyproject.toml"
+
+        ```toml
+        [tool.uv]
+        override-dependencies = [
+            "urllib3>=2.0",
+        ]
+        ```
+
+    === "uv.toml"
+
+        ```toml
+        override-dependencies = [
+            "urllib3>=2.0",
+        ]
+        ```
+
 ---
 
 ## Отключение конфигурации (--no-config)
@@ -713,3 +1048,5 @@ uv lock --no-config --verbose
   но не без него, проблема в конфигурационном файле;
 - воспроизведения поведения на "чистой" системе;
 - CI/CD, где вы хотите полностью контролировать настройки через переменные окружения.
+
+---

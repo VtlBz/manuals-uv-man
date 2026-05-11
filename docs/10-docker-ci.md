@@ -1,5 +1,7 @@
 # Раздел 10. Docker и CI/CD
 
+---
+
 ## uv в Docker
 
 Использование `uv` в Docker-контейнерах дает заметный прирост скорости сборки
@@ -10,10 +12,15 @@
 Рекомендуемый способ - копирование бинарного файла из официального образа:
 
 ```dockerfile
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
 ```
 
 Этот способ быстрее, чем `pip install uv`, и не загрязняет зависимости проекта.
+
+!!! warning "Пиннинг версии uv"
+    Тег `latest` удобен для демонстрации, но для production и CI нужно
+    фиксировать версию `uv` (например, `ghcr.io/astral-sh/uv:0.11.13`),
+    чтобы сборки оставались воспроизводимыми.
 
 ### Ключевые переменные окружения для Docker
 
@@ -100,7 +107,7 @@ RUN uv sync --frozen --no-dev
 ```dockerfile
 FROM python:3.12-slim
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
 
 ENV UV_PYTHON_DOWNLOADS=never
 ENV UV_COMPILE_BYTECODE=1
@@ -130,7 +137,7 @@ Multi-stage build позволяет создать минимальный produ
 
 ```dockerfile
 # --- Этап 1: сборка ---
-FROM ghcr.io/astral-sh/uv:latest AS uv
+FROM ghcr.io/astral-sh/uv:0.11.13 AS uv
 
 FROM python:3.12-slim AS builder
 
@@ -169,7 +176,7 @@ CMD ["python", "-m", "myapp"]
 
 ```dockerfile
 # --- Этап сборки ---
-FROM ghcr.io/astral-sh/uv:latest AS uv
+FROM ghcr.io/astral-sh/uv:0.11.13 AS uv
 
 FROM python:3.12-slim AS builder
 
@@ -224,7 +231,7 @@ CMD ["uvicorn", "myapp.main:app", "--host", "0.0.0.0", "--port", "8000"]
 FROM python:3.12-slim-bookworm AS builder
 
 # uv нужен только на этапе сборки
-COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
@@ -286,7 +293,7 @@ CMD ["python", "-m", "myapp"]
 
 ```dockerfile
 FROM python:3.12-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:latest \
+COPY --from=ghcr.io/astral-sh/uv:0.11.13 \
      /uv /uvx /bin/
 COPY pyproject.toml uv.lock ./
 RUN uv export --frozen --no-dev --no-hashes \
@@ -308,8 +315,10 @@ CMD ["python", "-m", "myapp"]
 
 ### Принципы использования uv в CI
 
-1. **Всегда используйте `--locked`** - если lockfile устарел, сборка должна
-  упасть, а не молча обновить зависимости.
+1. **Контролируйте целостность lockfile** - CI не должен молча обновлять
+  зависимости. Два способа: отдельная проверка `uv lock --check` плюс
+  `uv sync --frozen` на всех последующих шагах, либо `uv sync --locked`
+  (совмещает проверку и установку).
 2. **Не активируйте виртуальное окружение вручную** - используйте `uv run`
   для запуска команд.
 3. **Кешируйте директорию uv** - это ускоряет повторные сборки.
@@ -333,41 +342,49 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Установка uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v8
         with:
+          version: "0.11.13"
           enable-cache: true
 
       - name: Проверка lockfile
         run: uv lock --check
 
       - name: Установка зависимостей
-        run: uv sync --locked --all-extras
+        run: uv sync --frozen --all-extras --all-groups
 
       - name: Линтинг
-        run: uvx ruff check .
+        run: uv run --frozen ruff check .
 
       - name: Форматирование
-        run: uvx ruff format --check .
+        run: uv run --frozen ruff format --check .
 
       - name: Проверка типов
-        run: uv run mypy src/
+        run: uv run --frozen mypy src/
 
       - name: Тесты
-        run: uv run pytest
+        run: uv run --frozen pytest
 ```
 
 Ключевые моменты:
 
-- **`astral-sh/setup-uv@v4`** - устанавливает `uv`, автоматически кеширует
+- **`astral-sh/setup-uv@v8`** - устанавливает `uv`, автоматически кеширует
   `~/.cache/uv` между запусками при `enable-cache: true`.
+  Для production CI рекомендуется pin по commit SHA вместо тега.
 - **`uv lock --check`** - отдельный шаг для проверки актуальности lockfile.
   Если разработчик изменил зависимости, но забыл обновить `uv.lock`,
   сборка упадет с понятным сообщением.
-- **`uvx ruff`** - запускает `ruff` без установки в проект. Для `mypy`
-  используется `uv run`, так как ему нужен доступ к зависимостям проекта.
+- **`uv run --frozen`** - запускает проектные инструменты (ruff, mypy, pytest)
+  в окружении проекта. Флаг `--frozen` гарантирует, что lockfile не будет изменен.
+
+!!! warning "`uvx` vs `uv run` в CI"
+    `uvx` запускает инструменты в изолированном окружении без доступа
+    к зависимостям проекта. Для проектных инструментов (ruff, mypy, pytest),
+    которым нужен доступ к коду и зависимостям, используйте `uv run --frozen`.
+    `uvx` подходит только для разового запуска инструментов без привязки к проекту.
 
 **Матрица версий Python:**
 
@@ -379,10 +396,11 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v8
         with:
+          version: "0.11.13"
           enable-cache: true
 
       - run: uv sync --locked --python ${{ matrix.python-version }}
@@ -399,8 +417,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
+        with:
+          version: "0.11.13"
       - run: uv build
       - run: uv publish --trusted-publishing always
 ```
@@ -410,15 +430,18 @@ jobs:
 В GitLab CI нет аналога `astral-sh/setup-uv`, поэтому `uv` устанавливается
 через `pip` или используется Docker-образ Astral.
 
-**Пример `.gitlab-ci.yml`:**
+**Пример `.gitlab-ci.yml`** (image-based подход):
 
 ```yaml
-default:
-  image: python:3.12-slim
-
 variables:
+  UV_VERSION: "0.11.13"
+  PYTHON_VERSION: "3.12"
+  BASE_LAYER: "bookworm-slim"
   UV_CACHE_DIR: .uv-cache
   UV_LINK_MODE: copy
+
+default:
+  image: ghcr.io/astral-sh/uv:${UV_VERSION}-python${PYTHON_VERSION}-${BASE_LAYER}
 
 cache:
   key:
@@ -435,19 +458,16 @@ stages:
 
 check:lock:
   stage: check
-  before_script:
-    - pip install --no-cache-dir uv
   script:
     - uv lock --check
 
 test:
   stage: test
   before_script:
-    - pip install --no-cache-dir uv
-    - uv sync --locked
+    - uv sync --frozen
   script:
-    - uv run ruff check .
-    - uv run pytest --junitxml=report.xml
+    - uv run --frozen ruff check .
+    - uv run --frozen pytest --junitxml=report.xml
   artifacts:
     reports:
       junit: report.xml
@@ -455,68 +475,88 @@ test:
 lint:
   stage: check
   before_script:
-    - pip install --no-cache-dir uv
+    - uv sync --frozen --group lint
   script:
-    - uvx ruff check .
-    - uvx ruff format --check .
+    - uv run --frozen ruff check .
+    - uv run --frozen ruff format --check .
 ```
 
 Ключевые моменты:
 
+- **Image-based подход** - `uv` уже установлен в базовом образе, не нужно
+  ставить через `pip` в каждом этапе. Версия фиксируется через `UV_VERSION`.
 - **`UV_CACHE_DIR`** - перенаправляет кеш `uv` в каталог проекта (`.uv-cache/`),
   чтобы GitLab мог его сохранять через секцию `cache`.
 - **Ключ кеша по файлам** - кеш привязан к содержимому `uv.lock` и
   `pyproject.toml`. При изменении зависимостей кеш пересоздается.
 - **`UV_LINK_MODE=copy`** - аналогично Docker, копирует файлы вместо hardlink.
+- **`uv lock --check` + `--frozen`** - та же стратегия, что и в GitHub Actions:
+  отдельная проверка lockfile, затем `--frozen` на всех этапах.
 
-**Альтернатива** - использовать Docker-образ Astral:
+**Альтернатива** - установка `uv` через `pip` (например, если образы Astral недоступны):
 
 ```yaml
 default:
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  image: python:3.12-slim
+
+variables:
+  UV_VERSION: "0.11.13"
 
 before_script:
-  - uv --version
+  - pip install --no-cache-dir "uv==${UV_VERSION}"
 ```
 
-Проще, чем ставить `uv` через `pip` в каждом этапе,
-но создает привязку к образам Astral.
+Этот вариант проще для начала, но создает накладные расходы
+на установку `uv` в каждом этапе.
 
-### Зачем нужен `--locked`
+### Контроль целостности lockfile в CI
 
-Флаг `--locked` заставляет uv проверить, что `uv.lock` соответствует
-`pyproject.toml`. Если lockfile устарел (например, разработчик добавил
-зависимость, но забыл обновить lockfile), команда завершится с ошибкой.
+В CI важно гарантировать, что `uv.lock` соответствует `pyproject.toml`.
+Без этого контроля uv молча пересоздаст lockfile и может установить
+другие версии зависимостей. Два подхода:
 
-Это критически важно для CI:
+**1. `uv lock --check` + `--frozen`** (рекомендуется):
 
-- **без `--locked`**: uv молча пересоздаст lockfile и может установить другие
-  версии зависимостей;
-- **с `--locked`**: CI упадет, разработчик увидит проблему и обновит lockfile.
+Отдельный шаг проверки, затем `--frozen` на всех этапах. Быстрее
+(проверка выполняется однократно) и надежнее в edge-cases (Docker
+bind-mount, workspace-проекты).
 
-!!! warning "Всегда используйте `--locked` в CI"
-    Без этого флага вы теряете гарантию воспроизводимости сборки.
-    Это одна из самых частых ошибок при настройке CI с uv.
+**2. `--locked`** (без отдельного `uv lock --check`):
+
+Совмещает проверку и установку в одной команде. Проще в настройке,
+но выполняет проверку при каждом вызове `uv sync`.
+
+!!! warning "Не запускайте `uv sync` без контроля lockfile в CI"
+    Без `--frozen`, `--locked` или предварительного `uv lock --check`
+    вы теряете гарантию воспроизводимости сборки. Это одна из самых
+    частых ошибок при настройке CI с uv.
 
 ## Pre-commit и линтинг
 
-Инструменты линтинга (`ruff`, `mypy`) удобно запускать
-через `uvx` - это не требует их установки в проект.
+Инструменты линтинга (`ruff`, `black`) удобно запускать
+через `uvx` при локальной разработке - это не требует их установки в проект.
 
 ### Запуск линтеров через `uvx`
 
 `uvx` создает изолированное временное окружение для инструмента и запускает его:
 
 ```bash
-# Проверка стиля кода
+# Линтинг
 uvx ruff check .
 
-# Проверка форматирования
-uvx ruff format --check .
-
-# Автоформатирование
+# Форматирование
 uvx ruff format .
 ```
+
+!!! warning "`uvx` не подходит для CI-пайплайнов"
+    `uvx` запускает инструменты в изолированном окружении без доступа
+    к зависимостям проекта. В CI используйте `uv run --frozen`:
+
+    ```bash
+    uv run --frozen ruff check .
+    uv run --frozen mypy src/
+    uv run --frozen pytest
+    ```
 
 Для `mypy` предпочтительнее использовать `uv run`, так как ему нужен
 доступ к зависимостям проекта для корректной проверки типов:
@@ -591,3 +631,5 @@ ignore_missing_imports = true
 | FastAPI | `python:3.12-slim` | `COPY --from` (builder) | `uv sync --frozen --no-dev` | Non-root user, `EXPOSE 8000` |
 | C-расширения | `python:3.12-slim` | `COPY --from` (builder) | `apt install` + `uv sync` | `build-essential` в builder, `libpq5` в runtime |
 | Security | `python:3.12-slim` | Installer (`curl`) | `uv sync --frozen` | Без сторонних base-образов |
+
+---

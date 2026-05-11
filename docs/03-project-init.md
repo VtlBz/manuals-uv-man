@@ -1,4 +1,4 @@
-# Раздел 4. Инициализация проекта
+# Раздел 3. Инициализация проекта
 
 ---
 
@@ -62,9 +62,13 @@ uv init --app myapp
 Приложение - это проект, который запускается, но не публикуется как пакет в PyPI.
 Характерные черты:
 
-- Плоская структура: `main.py` (или `hello.py`) в корне проекта.
+- Плоская структура: `main.py` в корне проекта.
 - Нет секции `[build-system]` в `pyproject.toml`.
 - Типичные примеры: веб-сервисы, CLI-утилиты, скрипты автоматизации, data-пайплайны.
+
+!!! note "hello.py в старых версиях"
+    В версиях `uv` до 0.6.0 по умолчанию создавался файл `hello.py`.
+    В актуальных версиях создается `main.py`.
 
 Структура:
 
@@ -72,7 +76,7 @@ uv init --app myapp
 myapp/
 ├── .python-version
 ├── README.md
-├── hello.py
+├── main.py
 └── pyproject.toml
 ```
 
@@ -147,10 +151,10 @@ mycli = "mycli:main"
 
 | Флаг | Тип | build-system | project.scripts | Структура |
 | ---- | --- | ------------ | --------------- | --------- |
-| (без флага) | Приложение | Нет | Нет | Flat (`hello.py` в корне) |
-| `--app` | Приложение | Нет | Нет | Flat (`hello.py` в корне) |
-| `--lib` | Библиотека | Да (`hatchling`) | Нет | `src/` layout |
-| `--package` | Пакет | Да (`hatchling`) | Да | `src/` layout |
+| (без флага) | Приложение | Нет | Нет | Flat (`main.py` в корне) |
+| `--app` | Приложение | Нет | Нет | Flat (`main.py` в корне) |
+| `--lib` | Библиотека | Да (`uv_build`) | Нет | `src/` layout |
+| `--package` | Пакет | Да (`uv_build`) | Да | `src/` layout |
 
 !!! tip "Какой тип выбрать"
     Если вы пишете сервис, скрипт или приложение, которое будет запускаться
@@ -180,7 +184,7 @@ uv init --app myapp --python 3.12
 | `pyproject.toml` | Манифест проекта: метаданные, зависимости, настройки инструментов |
 | `.python-version` | Закрепленная версия Python для проекта |
 | `README.md` | Заготовка документации |
-| `hello.py` / `src/pkg/__init__.py` | Точка входа (зависит от типа проекта) |
+| `main.py` / `src/pkg/__init__.py` | Точка входа (зависит от типа проекта) |
 
 !!! note "Что НЕ создает `uv init`"
     Команда `uv init` не создает `uv.lock` и `.venv`. Lockfile появится при
@@ -277,7 +281,7 @@ docs = [
 Это поведение можно изменить через настройку `default-groups` в `[tool.uv]`.
 
 Подробнее об управлении группами при установке (`uv sync`, `default-groups`,
-`--no-dev`, `--group`, `--only-group`) - в разделе [Группы зависимостей](05-dependencies.md#группы-зависимостей).
+`--no-dev`, `--group`, `--only-group`) - в разделе [Группы зависимостей](04-dependencies.md#группы-зависимостей).
 
 ### Секция `[project.optional-dependencies]`
 
@@ -337,7 +341,7 @@ uv add "mylib[ml]"
     default-groups = ["dev", "test"]
     ```
 
-Подробнее о каждом параметре - в [разделе 9](09-configuration.md).
+Подробнее о каждом параметре - в разделе [Конфигурация](09-configuration.md).
 
 ### Секция `[build-system]`
 
@@ -345,15 +349,15 @@ uv add "mylib[ml]"
 
 ```toml
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.11.13,<0.12"]
+build-backend = "uv_build"
 ```
 
 - **Для библиотек** (`--lib`): обязательная секция. `uv` по умолчанию использует
-  `hatchling`, но вы можете заменить его на `setuptools`, `flit-core`,
+  `uv_build`, но вы можете заменить его на `setuptools`, `hatchling`, `flit-core`,
   `pdm-backend` или любой другой PEP 517-совместимый бэкенд.
-- **Для приложений** (`--app`): секция отсутствует, потому что
-  приложения не публикуются как пакеты.
+- **Для приложений** (`--app`): секция отсутствует, потому что приложения
+  не публикуются как пакеты.
 
 ### Секции `[tool.ruff]` и `[tool.mypy]`
 
@@ -471,20 +475,13 @@ uv lock --upgrade-package requests
 
 ### Флаги `--locked` и `--frozen` для CI
 
-Для CI-окружений важно контролировать, как `uv` работает с lockfile:
+В CI-окружениях важно контролировать, как `uv` работает с lockfile:
 
-```bash
-# Ошибка, если lockfile не синхронизирован с pyproject.toml
-uv sync --locked
+- `--locked` - проверяет актуальность `uv.lock` и устанавливает из него.
+  Если lockfile устарел - ошибка.
+- `--frozen` - устанавливает строго из `uv.lock` без проверки актуальности.
 
-# Не проверять актуальность lockfile, установить зафиксированное
-uv sync --frozen
-```
-
-| Флаг | Поведение | Когда использовать |
-| ---- | --------- | ------------------ |
-| `--locked` | Проверяет, что `uv.lock` актуален. Если `pyproject.toml` изменился, а `uv.lock` не обновлен - завершается с ошибкой. | CI/CD: гарантия, что разработчик не забыл обновить lockfile |
-| `--frozen` | Не проверяет актуальность lockfile. Устанавливает ровно то, что записано в `uv.lock`. | Docker-сборки, оффлайн-установки |
+Подробно lock/sync workflow разбирается в разделе [Sync-workflow](06-sync-workflow.md).
 
 ---
 
@@ -494,15 +491,15 @@ uv sync --frozen
 
 ```text
 myapp/
-├── .python-version        # Pinned Python version (e.g., "3.12")
-├── .venv/                 # Виртуальное окружение (auto-created on first sync)
-├── README.md              # Project documentation placeholder
-├── hello.py               # Entry point
-├── pyproject.toml         # Project manifest
-└── uv.lock                # Lockfile (after first lock/sync/add)
+├── .python-version   # Закрепленная версия Python (напр. "3.12")
+├── .venv/            # Виртуальное окружение (создается при первом sync или run)
+├── README.md         # Заготовка документации
+├── main.py           # Точка входа
+├── pyproject.toml    # Манифест проекта
+└── uv.lock           # Lockfile (появляется после первого lock/sync/add)
 ```
 
-Содержимое `hello.py`:
+Содержимое `main.py`:
 
 ```python
 def main():
@@ -523,8 +520,8 @@ mylib/
 ├── uv.lock
 └── src/
     └── mylib/
-        ├── __init__.py    # Package init with version and public API
-        └── py.typed       # PEP 561 marker for type checking support
+        ├── __init__.py    # Инициализация пакета с публичным API
+        └── py.typed       # Маркер PEP 561 для поддержки проверки типов
 ```
 
 Содержимое `src/mylib/__init__.py`:
@@ -545,7 +542,7 @@ def hello() -> str:
 `uv` (и другие инструменты, например `pyenv`) читают этот файл, чтобы
 определить, какую версию Python использовать в проекте. Автоматическое
 скачивание недостающей версии зависит от настроек `python-preference` и
-`python-downloads` (подробнее - в [разделе 3](03-python-versions.md)).
+`python-downloads` (подробнее - в разделе [Управление версиями Python](08-python-versions.md)).
 
 ### Виртуальное окружение `.venv`
 
@@ -554,7 +551,7 @@ def hello() -> str:
 ```bash
 # Любая из этих команд создаст .venv, если его нет
 uv sync
-uv run hello.py
+uv run main.py
 uv add requests
 ```
 
@@ -570,7 +567,7 @@ uv add requests
 | `uv.lock` | `uv lock` / `uv add` / `uv sync` | Нет | Да (для приложений) |
 | `.python-version` | `uv init` / `uv python pin` | Да | Да |
 | `.venv/` | `uv sync` / `uv run` | Нет | Нет |
-| `hello.py` / `src/<pkg>/` | `uv init` | Да | Да |
+| `main.py` / `src/<pkg>/` | `uv init` | Да | Да |
 | `README.md` | `uv init` | Да | Да |
 | `.gitignore` | `uv init` | Да | Да |
 
@@ -578,127 +575,7 @@ uv add requests
 
 ## Интеграция uv в существующий проект
 
-Частый сценарий: у команды уже есть проект с `pyproject.toml`, в котором
-настроены Ruff и mypy, но зависимости управляются через `pip` +
-`requirements.txt`. Как перейти на `uv`, не ломая существующие настройки?
+Если у вас уже есть проект с `pyproject.toml` (например, с настройками Ruff, mypy,
+pytest), процедура интеграции `uv` описана в разделе [Миграция с существующим pyproject.toml](13-migration.md#работа-с-существующим-pyprojecttoml).
 
-!!! warning "`uv init` и существующий `pyproject.toml`"
-    Если в директории уже есть `pyproject.toml`, команда `uv init` откажется
-    выполняться, чтобы не перезаписать существующую конфигурацию. В этом случае
-    добавляйте секции `[project]` и `[dependency-groups]` в `pyproject.toml`
-    вручную, как показано ниже.
-
-### Пример: до перехода
-
-```toml
-# pyproject.toml - existing config (only tool settings)
-[tool.ruff]
-line-length = 120
-target-version = "py312"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B"]
-ignore = ["E501"]
-
-[tool.ruff.format]
-quote-style = "double"
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-```
-
-И рядом лежат файлы:
-
-```text
-requirements.in          # Direct dependencies
-requirements.txt         # Pinned dependencies (pip-compile output)
-requirements-dev.in      # Dev dependencies
-requirements-dev.txt     # Pinned dev dependencies
-```
-
-### Пример: после перехода на uv
-
-Добавляем секции `[project]` и
-`[dependency-groups]` в существующий `pyproject.toml`:
-
-```toml
-# pyproject.toml - after uv integration
-[project]
-name = "myapp"
-version = "1.0.0"
-description = "Our existing application"
-requires-python = ">=3.12"
-dependencies = [
-    "fastapi[standard]>=0.136",
-    "pydantic>=2.0",
-    "sqlalchemy>=2.0",
-    "httpx>=0.28",
-    "celery>=5.6",
-]
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0",
-    "pytest-cov>=7.1",
-    "pytest-asyncio>=1.3",
-    "ruff>=0.15",
-    "mypy>=2.0",
-    "pre-commit>=4.6",
-]
-
-# --- Existing tool configs below (untouched) ---
-
-[tool.ruff]
-line-length = 120
-target-version = "py312"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B"]
-ignore = ["E501"]
-
-[tool.ruff.format]
-quote-style = "double"
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-```
-
-### Шаги интеграции
-
-**1.** Добавьте секции `[project]` и `[dependency-groups]` в существующий
-`pyproject.toml` вручную (`uv init` не модифицирует существующий файл).
-
-**2.** Сгенерируйте lockfile и создайте окружение:
-
-```bash
-uv lock
-uv sync
-```
-
-**3.** Проверьте, что инструменты работают:
-
-```bash
-uv run ruff check .
-uv run mypy src/
-```
-
-!!! note "Что происходит с настройками инструментов"
-    Секции `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`
-    остаются нетронутыми. uv работает только со своими секциями
-    (`[project]`, `[dependency-groups]`, `[tool.uv]`, `[build-system]`)
-    и не изменяет чужие конфигурации.
-
-После успешной миграции старые файлы `requirements*.txt`
-и `requirements*.in` можно удалить.
+---

@@ -95,10 +95,9 @@ uv publish
 ```
 
 !!! note "Виртуальное окружение создается автоматически"
-    В отличие от классического подхода, вам не нужно вручную
-    создавать `.venv`. Окружение создается автоматически при
-    первой команде, которой оно необходимо (`uv add`,
-    `uv sync`, `uv run`).
+    В отличие от классического подхода, вам не нужно вручную создавать
+    `.venv`. Окружение создается автоматически при первой команде,
+    которой оно необходимо (`uv add`, `uv sync`, `uv run`).
 
 !!! tip "Постепенная миграция"
     Вам не нужно переходить на `uv` целиком за один день. Можно начать с
@@ -203,74 +202,80 @@ Python, а чтобы управлять Python...).
 
 ```text
 uv
-├── python          # Python version management
-│   ├── install     # Download and install Python
-│   ├── list        # List available versions
-│   ├── pin         # Pin version for project
-│   ├── find        # Find installed Python
-│   └── uninstall   # Remove Python version
+├── python          # Управление версиями Python
+│   ├── install     # Скачать и установить Python
+│   ├── list        # Список доступных версий
+│   ├── pin         # Привязать версию к проекту
+│   ├── find        # Найти установленный Python
+│   └── uninstall   # Удалить версию Python
 │
-├── Project         # Project management (pyproject.toml + uv.lock)
-│   ├── init        # Create new project
-│   ├── add         # Add dependency
-│   ├── remove      # Remove dependency
-│   ├── lock        # Generate/update lockfile
-│   ├── sync        # Sync environment with lockfile
-│   ├── run         # Run command in project environment
-│   ├── tree        # Show dependency tree
-│   └── export      # Export to requirements.txt
+├── Project         # Управление проектом (pyproject.toml + uv.lock)
+│   ├── init        # Создать новый проект
+│   ├── add         # Добавить зависимость
+│   ├── remove      # Удалить зависимость
+│   ├── lock        # Сгенерировать/обновить lockfile
+│   ├── sync        # Синхронизировать окружение с lockfile
+│   ├── run         # Запустить команду в окружении проекта
+│   ├── tree        # Показать дерево зависимостей
+│   └── export      # Экспорт в requirements.txt
 │
-├── tool            # Global tool management
-│   ├── run (uvx)   # Run tool without installing globally
-│   ├── install     # Install tool globally
-│   ├── list        # List installed tools
-│   └── uninstall   # Remove global tool
+├── tool            # Управление глобальными инструментами
+│   ├── run (uvx)   # Запуск инструмента без установки
+│   ├── install     # Глобальная установка инструмента
+│   ├── list        # Список установленных инструментов
+│   └── uninstall   # Удаление инструмента
 │
-├── pip             # pip-compatible interface
-│   ├── install     # Install packages
+├── pip             # pip-совместимый интерфейс
+│   ├── install     # Установка пакетов
 │   ├── uninstall   # Удаление пакетов
-│   ├── compile     # Compile requirements
-│   ├── sync        # Sync from requirements file
-│   ├── list        # List installed packages
-│   ├── freeze      # Output installed packages
+│   ├── compile     # Компиляция requirements
+│   ├── sync        # Синхронизация из файла requirements
+│   ├── list        # Список установленных пакетов
+│   ├── freeze      # Вывод установленных пакетов
 │   └── show        # Информация о пакете
 │
-├── venv            # Виртуальное окружение creation
+├── venv            # Создание виртуального окружения
 │
-├── build / publish # Build and publish packages
+├── build / publish # Сборка и публикация пакетов
 │
-├── cache           # Cache management
-│   ├── clean       # Clear cache
-│   ├── prune       # Remove unused entries
-│   └── dir         # Show cache path
+├── cache           # Управление кешем
+│   ├── clean       # Очистить кеш
+│   ├── prune       # Удалить неиспользуемые записи
+│   └── dir         # Показать путь к кешу
 │
-└── self            # Self-management
-    └── update      # Update uv itself
+└── self            # Самообновление
+    └── update      # Обновить uv
 ```
 
 ### Группы команд
 
 Команды `uv` можно разделить на несколько категорий по назначению:
 
-**Управление версиями Python** - установка, переключение, привязка версий
-интерпретатора к проектам. Подробно рассматривается
-в [разделе 3](03-python-versions.md).
-
 **Управление проектами** - полный цикл работы с проектом: инициализация,
 зависимости, lockfile, синхронизация, виртуальные окружения. Это центральная
-часть `uv`, подробно рассматривается в разделах [4](04-project-init.md),
-[5](05-dependencies.md), [6](06-sync-workflow.md) и [8](08-environments.md).
+часть `uv`, подробно рассматривается в разделах
+[Инициализация проекта](03-project-init.md),
+[Зависимости](04-dependencies.md),
+[Sync-workflow](06-sync-workflow.md) и
+[Окружения](07-environments.md).
 
 **Выполнение скриптов и инструментов** - запуск кода в контексте проекта
 (`uv run`), запуск одноразовых CLI-инструментов (`uvx`).
-Рассматривается в [разделе 7](07-running-code.md).
+Рассматривается в разделе [Запуск кода и инструментов](05-running-code.md).
+
+**Управление версиями Python** - установка, переключение, привязка версий
+интерпретатора к проектам.
+Рассматривается в разделе [Управление версиями Python](08-python-versions.md).
 
 **pip-совместимый интерфейс** - привычные команды для тех, кто мигрирует с pip.
 Полезны в переходный период и в CI-скриптах.
-Подробнее в [разделе 13](13-migration.md).
+Рассматривается в разделе [Миграция](13-migration.md).
 
-**Служебные команды** - управление кешем,
-самообновление, сборка и публикация пакетов.
+**Служебные команды** - управление кешем, самообновление,
+сборка и публикация пакетов. Рассматривается в разделах
+[Управление кешем](09-configuration.md#управление-кешем),
+[Обновление uv](02-installation.md#обновление-uv),
+[Сборка и публикация](12-publishing.md).
 
 ---
 

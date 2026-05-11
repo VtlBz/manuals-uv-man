@@ -5,7 +5,7 @@
 ## Миграция с requirements.txt
 
 Это самый распространенный сценарий. У вас есть проект с `requirements.txt`
-(и, возможно, `requirements-dev.txt`), и вы хотите перейти на `uv`.
+(и, возможно, `requirements-dev.txt` и другие), и вы хотите перейти на `uv`.
 
 ### Исходная структура проекта
 
@@ -55,14 +55,12 @@ cd my-project
 uv init
 ```
 
-`uv` создаст `pyproject.toml` с базовой структурой. Если файл `pyproject.toml` уже
-существует (например, с конфигурацией ruff или mypy), добавьте в него секцию
-`[project]` вручную или используйте `uv init` - он дополнит существующий файл.
+`uv` создаст `pyproject.toml` с базовой структурой.
 
-!!! note "uv init и существующие файлы"
-    Команда `uv init` не перезаписывает существующий `pyproject.toml`. Если файл
-    уже есть, `uv` добавит недостающие секции (`[project]`), оставив все остальные
-    настройки нетронутыми.
+!!! warning "uv init и существующий `pyproject.toml`"
+    Если файл `pyproject.toml` уже существует (например, с конфигурацией ruff
+    или mypy), `uv init` завершится ошибкой. Варианты решения с примерами
+    описаны в разделе [Интеграция uv в существующий проект](#интеграция-uv-в-существующий-проект).
 
 ### Шаг 2. Импорт основных зависимостей
 
@@ -197,7 +195,7 @@ CMD ["python", "-m", "app.main"]
 ```dockerfile
 FROM python:3.12-slim
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
 # Copy project files
 COPY pyproject.toml uv.lock ./
 # Install dependencies (without dev)
@@ -212,8 +210,8 @@ CMD ["uv", "run", "python", "-m", "app.main"]
 
 ```yaml
 steps:
-  - uses: actions/checkout@v4
-  - uses: actions/setup-python@v5
+  - uses: actions/checkout@v6
+  - uses: actions/setup-python@v6
     with:
       python-version: "3.12"
   - run: pip install -r requirements.txt -r requirements-dev.txt
@@ -224,8 +222,10 @@ steps:
 
 ```yaml
 steps:
-  - uses: actions/checkout@v4
-  - uses: astral-sh/setup-uv@v5
+  - uses: actions/checkout@v6
+  - uses: astral-sh/setup-uv@v8
+    with:
+      version: "0.11.13"
   - run: uv sync --frozen
   - run: uv run pytest
 ```
@@ -646,6 +646,161 @@ uvx migrate-to-uv --keep-old-files
 
 ---
 
+## Интеграция uv в существующий проект
+
+Частый сценарий: у команды уже есть проект с `pyproject.toml`, в котором
+настроены Ruff и mypy, но зависимости управляются через `pip` +
+`requirements.txt`. Как перейти на `uv`, не ломая существующие настройки?
+
+!!! warning "`uv init` и существующий `pyproject.toml`"
+    Если в директории уже есть `pyproject.toml`, команда `uv init` завершится
+    ошибкой `"pyproject.toml already exists"`. `uv init` не умеет дополнять
+    существующий файл - она создает новый с нуля.
+
+Два способа интеграции:
+
+**Вариант 1. Добавить секции вручную** (рекомендуется).
+Дописать `[project]` и `[dependency-groups]` прямо в существующий
+`pyproject.toml`. Настройки инструментов остаются на месте.
+
+**Вариант 2. Через `uv init` + перенос настроек.**
+Переименовать существующий файл, выполнить `uv init`, перенести
+настройки инструментов из старого файла в новый:
+
+```bash
+mv pyproject.toml pyproject.toml.bak
+uv init
+# Затем перенести секции [tool.*] из pyproject.toml.bak в сгенерированный pyproject.toml
+```
+
+После этого импортировать зависимости по шагам [2](#шаг-2-импорт-основных-зависимостей)-[4](#шаг-4-что-будет-с-версиями)
+из начала этого раздела (включая dev-группы, `.in`-файлы
+и constraints при наличии).
+
+Второй вариант проще, если в `pyproject.toml` мало настроек
+инструментов, и удобнее начать с чистой структуры `uv`.
+
+Ниже показан первый вариант подробно.
+
+### Пример: до перехода
+
+```toml
+# pyproject.toml - существующая конфигурация (только настройки инструментов)
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+```
+
+И рядом лежат файлы:
+
+```text
+requirements.in          # Direct dependencies
+requirements.txt         # Pinned dependencies (pip-compile output)
+requirements-dev.in      # Dev dependencies
+requirements-dev.txt     # Pinned dev dependencies
+```
+
+### Пример: после перехода на uv
+
+Добавляем секции `[project]` и
+`[dependency-groups]` в существующий `pyproject.toml`:
+
+```toml
+# pyproject.toml - после интеграции uv
+[project]
+name = "myapp"
+version = "1.0.0"
+description = "Our existing application"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.136",
+    "pydantic>=2.0",
+    "sqlalchemy>=2.0",
+    "httpx>=0.28",
+    "celery>=5.6",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-cov>=7.1",
+    "pytest-asyncio>=1.3",
+    "ruff>=0.15",
+    "mypy>=2.0",
+    "pre-commit>=4.6",
+]
+
+# --- Существующие настройки инструментов ниже (не изменены) ---
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+```
+
+### Шаги интеграции
+
+**1.** Добавьте секции `[project]` и `[dependency-groups]` в существующий
+`pyproject.toml` вручную (`uv init` не модифицирует существующий файл).
+
+**2.** Сгенерируйте lockfile и создайте окружение:
+
+```bash
+uv lock
+uv sync
+```
+
+**3.** Проверьте, что инструменты работают:
+
+```bash
+uv run ruff check .
+uv run mypy src/
+```
+
+!!! note "Что происходит с настройками инструментов"
+    Секции `[tool.ruff]`, `[tool.mypy]`, `[tool.pytest.ini_options]`
+    остаются нетронутыми. uv работает только со своими секциями
+    (`[project]`, `[dependency-groups]`, `[tool.uv]`, `[build-system]`)
+    и не изменяет чужие конфигурации.
+
+В примере выше зависимости вписаны вручную. Если у вас есть
+`requirements.txt`, импортируйте зависимости из него -
+процедура описана в разделе
+[Миграция с requirements.txt](#миграция-с-requirementstxt).
+
+---
+
 ## Работа с существующим pyproject.toml
 
 Многие команды уже используют `pyproject.toml` для конфигурации инструментов
@@ -739,31 +894,20 @@ addopts = "-v --tb=short"
 - порядок секций в файле не имеет значения для TOML, но рекомендуется
   размещать `[project]` в начале.
 
-!!! note "Автоматическое добавление секций"
-    Команда `uv init` в директории с существующим `pyproject.toml` добавит
-    только недостающие секции и не тронет остальные. Однако если вы хотите
-    полный контроль над структурой файла, добавьте секции вручную.
+### Сценарии миграции
+
+В зависимости от исходного состояния проекта выбирайте подходящий раздел:
+
+**1. Нет `pyproject.toml`** - начните с [Миграция с requirements.txt](#миграция-с-requirementstxt).
+`uv init` создаст `pyproject.toml`, после чего зависимости импортируются
+через `uv add -r` (основные, dev, именованные группы).
+
+**2. Есть `pyproject.toml` (только конфиг инструментов, зависимости
+в `requirements.txt`)** - это самый распространенный случай. Два варианта
+решения с примерами описаны в разделе [Интеграция uv в существующий проект](#интеграция-uv-в-существующий-проект).
+
+**3. Полноценный `pyproject.toml` с `[project]` (Poetry, Hatch, PDM)** -
+используйте `uvx migrate-to-uv` для автоматической миграции,
+см. [Автоматизированные инструменты миграции](#автоматизированные-инструменты-миграции).
 
 ---
-
-## Чек-лист миграции
-
-Используйте этот чек-лист при переводе проекта на `uv`:
-
-- [ ] Инициализировать проект (`pyproject.toml` + `uv.lock`)
-- [ ] Импортировать production-зависимости
-- [ ] Импортировать dev/test-зависимости в соответствующие группы
-- [ ] Убедиться, что `uv sync` выполняется без ошибок
-- [ ] Запустить тесты через `uv run pytest`
-- [ ] Обновить `Dockerfile` (если применимо)
-- [ ] Обновить CI/CD-пайплайн (GitHub Actions, GitLab CI и т.д.)
-- [ ] Обновить `README.md` (инструкции по установке)
-- [ ] Обновить `.gitignore` (добавить `.venv/`, убедиться что `uv.lock` не в игноре)
-- [ ] Удалить старые файлы (`requirements*.txt`, `Pipfile`, `Pipfile.lock` и т.д.)
-- [ ] Уведомить команду и обновить документацию по онбордингу
-
-!!! tip "Пошаговый подход"
-    Не обязательно выполнять все пункты за один раз. Вы можете сначала
-    выполнить миграцию зависимостей (пункты 1-5), убедиться что все
-    работает, а затем обновить инфраструктуру (пункты 6-11) в отдельном
-    коммите или PR.
