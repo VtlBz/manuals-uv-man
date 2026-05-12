@@ -348,7 +348,7 @@ requirements-test.in   ->  requirements-test.txt
 ## Синхронизация и lockfile
 
 Управление lockfile (`uv lock`) и синхронизация окружения (`uv sync`)
-подробно описаны в разделе [Sync-workflow](06-sync-workflow.md). Здесь - краткая
+подробно описаны в разделе [Sync-workflow](07-sync-workflow.md). Здесь - краткая
 сводка ключевых команд:
 
 | Задача | Команда |

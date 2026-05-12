@@ -256,8 +256,8 @@ uv
 часть `uv`, подробно рассматривается в разделах
 [Инициализация проекта](03-project-init.md),
 [Зависимости](04-dependencies.md),
-[Sync-workflow](06-sync-workflow.md) и
-[Окружения](07-environments.md).
+[Окружения](06-environments.md),
+[Sync-workflow](07-sync-workflow.md).
 
 **Выполнение скриптов и инструментов** - запуск кода в контексте проекта
 (`uv run`), запуск одноразовых CLI-инструментов (`uvx`).

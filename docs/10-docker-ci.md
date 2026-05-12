@@ -404,7 +404,7 @@ jobs:
           enable-cache: true
 
       - run: uv sync --locked --python ${{ matrix.python-version }}
-      - run: uv run pytest
+      - run: uv run --locked pytest
 ```
 
 **Публикация пакета** (дополнительный job):

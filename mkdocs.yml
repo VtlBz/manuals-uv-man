@@ -66,8 +66,8 @@ nav:
   - "3. Инициализация проекта": 03-project-init.md
   - "4. Управление зависимостями": 04-dependencies.md
   - "5. Запуск кода и инструментов": 05-running-code.md
-  - "6. Sync-workflow": 06-sync-workflow.md
-  - "7. Виртуальные окружения": 07-environments.md
+  - "6. Виртуальные окружения": 06-environments.md
+  - "7. Sync-workflow": 07-sync-workflow.md
   - "8. Управление версиями Python": 08-python-versions.md
   - "9. Конфигурация": 09-configuration.md
   - "10. Docker и CI/CD": 10-docker-ci.md

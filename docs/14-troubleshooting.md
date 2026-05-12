@@ -57,7 +57,7 @@ uv sync
 ```
 
 Безопасно - окружение восстанавливается из `uv.lock`.
-Подробнее об окружениях - в разделе [Виртуальные окружения](07-environments.md).
+Подробнее об окружениях - в разделе [Виртуальные окружения](06-environments.md).
 
 ### Шаг 5. Проверить `pyproject.toml`
 
@@ -67,7 +67,7 @@ uv sync
 
 ### Шаг 6. Проверить `uv.lock`
 
-Подробнее о флагах `--locked`, `--frozen`, `--check` - в разделе [Sync-workflow](06-sync-workflow.md).
+Подробнее о флагах `--locked`, `--frozen`, `--check` - в разделе [Sync-workflow](07-sync-workflow.md).
 
 ```bash
 # Актуальность lockfile
@@ -375,7 +375,7 @@ ENV UV_LINK_MODE=copy
 - `uv` не парсит `.python-version` с именем виртуального окружения pyenv -
   плагин pyenv-virtualenv записывает имя env вместо версии.
 
-**Sync-workflow ([Типичные сценарии](06-sync-workflow.md#типичные-сценарии)):**
+**Sync-workflow ([Типичные сценарии](07-sync-workflow.md#типичные-сценарии)):**
 
 - Разрешение конфликтов `uv.lock` после merge - см. также
   [Merge-конфликты в uv.lock](#merge-конфликты-в-uvlock) выше.

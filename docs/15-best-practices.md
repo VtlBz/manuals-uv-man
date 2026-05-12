@@ -53,7 +53,7 @@ myproject/
 !!! warning "uv.lock обязательно в git"
     Это самое важное правило. Без `uv.lock` в репозитории каждый разработчик и
     CI-сервер может получить разные версии зависимостей. Коммитите lockfile всегда.
-    Подробнее о lockfile - в разделе [Sync-workflow](06-sync-workflow.md).
+    Подробнее о lockfile - в разделе [Sync-workflow](07-sync-workflow.md).
 
 ### Правила для CI/CD
 

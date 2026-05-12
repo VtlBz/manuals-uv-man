@@ -1,6 +1,4 @@
-# Раздел 6. Sync-workflow
-
----
+# Раздел 7. Sync-workflow
 
 ## Команды sync-workflow
 

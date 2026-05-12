@@ -227,7 +227,7 @@ steps:
     with:
       version: "0.11.13"
   - run: uv sync --frozen
-  - run: uv run pytest
+  - run: uv run --frozen pytest
 ```
 
 **3. README.md** (инструкция для разработчиков):
@@ -315,7 +315,7 @@ uv sync
 
 ### Пошаговый процесс
 
-**Шаг 1.** Инициализируйте `uv`-проект:
+**Шаг 1.** Если `pyproject.toml` отсутствует, инициализируйте `uv`-проект:
 
 ```bash
 uv init
