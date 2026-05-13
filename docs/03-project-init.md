@@ -175,7 +175,9 @@ uv init --app myapp --python 3.12
 
 - Запишет `3.12` в файл `.python-version`.
 - Установит `requires-python = ">=3.12"` в `pyproject.toml`.
-- Если Python 3.12 еще не установлен, uv скачает и установит его автоматически.
+- По умолчанию, если Python 3.12 не найден, `uv` скачает managed
+  Python автоматически. Это поведение можно отключить настройкой
+  `python-downloads` (подробнее - в разделе [Управление версиями Python](08-python-versions.md)).
 
 ### Какие файлы генерирует `uv init`
 

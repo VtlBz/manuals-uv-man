@@ -222,13 +222,27 @@ steps:
 
 ```yaml
 steps:
-  - uses: actions/checkout@v6
-  - uses: astral-sh/setup-uv@v8
+  - name: Checkout
+    uses: actions/checkout@v6
+
+  - name: Install uv
+    uses: astral-sh/setup-uv@v8
     with:
       version: "0.11.13"
-  - run: uv sync --frozen
-  - run: uv run --frozen pytest
+      enable-cache: true
+
+  - name: Check lockfile
+    run: uv lock --check
+
+  - name: Install dependencies
+    run: uv sync --frozen --all-extras --all-groups
+
+  - name: Test
+    run: uv run --frozen pytest
 ```
+
+Полный production-ready CI-шаблон с линтингом, проверкой типов и матрицей
+версий - в разделе [Docker и CI/CD](10-docker-ci.md#github-actions).
 
 **3. README.md** (инструкция для разработчиков):
 
