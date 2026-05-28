@@ -1,4 +1,4 @@
-# Раздел 8. Управление версиями Python
+# Раздел 3. Управление версиями Python
 
 ---
 
@@ -623,7 +623,7 @@ export UV_PYTHON_DOWNLOADS=manual
 
     ```dockerfile
     FROM python:3.12-slim
-    COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /usr/local/bin/uv
+    COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /usr/local/bin/uv
     ENV UV_PYTHON_DOWNLOADS=manual
     ENV UV_PYTHON_PREFERENCE=only-system
     ```
@@ -1067,3 +1067,5 @@ requires-python = ">=3.11"
     ```bash
     uv python pin 3.12
     ```
+
+---

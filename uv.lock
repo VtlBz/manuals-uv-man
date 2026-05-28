@@ -498,19 +498,21 @@ wheels = [
 name = "uv-manual"
 version = "0.1.0"
 source = { virtual = "." }
-dependencies = [
+
+[package.dev-dependencies]
+docs = [
     { name = "mkdocs-include-markdown-plugin" },
     { name = "mkdocs-material" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "mkdocs-include-markdown-plugin" },
-    { name = "mkdocs-material" },
-]
 
 [package.metadata.requires-dev]
 dev = []
+docs = [
+    { name = "mkdocs-include-markdown-plugin" },
+    { name = "mkdocs-material" },
+]
 
 [[package]]
 name = "watchdog"

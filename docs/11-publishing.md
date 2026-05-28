@@ -1,4 +1,4 @@
-# Раздел 12. Сборка и публикация пакетов
+# Раздел 11. Сборка и публикация пакетов
 
 ---
 
@@ -13,7 +13,7 @@
 
 ```toml
 [build-system]
-requires = ["uv_build>=0.11.13,<0.12"]
+requires = ["uv_build>=0.11.14,<0.12"]
 build-backend = "uv_build"
 ```
 
@@ -45,7 +45,7 @@ build-backend = "flit_core.buildapi"
     Если вы создавали проект через `uv init`, секция `[build-system]`
     отсутствует - проект считается приложением. Для библиотек используйте
     `uv init --lib`, который добавит `[build-system]` автоматически.
-    Подробнее о типах проектов - в разделе [Инициализация проекта](03-project-init.md).
+    Подробнее о типах проектов - в разделе [Инициализация проекта](04-project-init.md).
 
 ### Метаданные пакета в pyproject.toml
 
@@ -86,15 +86,36 @@ classifiers = [
     `uv version` позволяет обновить версию пакета перед публикацией:
 
     ```bash
+    # Показать текущую версию
+    uv version
+
     # Установить конкретную версию
     uv version 1.0.0
+
+    # Увеличить патч-версию (1.2.3 -> 1.2.4)
+    uv version --bump patch
 
     # Увеличить минорную версию (1.2.3 -> 1.3.0)
     uv version --bump minor
 
+    # Увеличить мажорную версию (1.2.3 -> 2.0.0)
+    uv version --bump major
+
+    # Пререлизы (пример: 1.3.0 -> 1.3.1rc1)
+    uv version --bump rc
+
+    # Stable-релиз из пререлиза (1.3.1rc1 -> 1.3.1)
+    uv version --bump stable
+
     # Предпросмотр без изменения файла
     uv version 2.0.0 --dry-run
+
+    # Для конкретного пакета в workspace
+    uv version --package my-package --bump minor
     ```
+
+    Для безопасного релизного цикла обычно используют `--dry-run`,
+    затем фактический `--bump` и только после этого `uv build`.
 
 ### Сборка пакета (`uv build`)
 
@@ -271,7 +292,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v8
         with:
-          version: "0.11.13"
+          version: "0.11.14"
 
       - run: uv build
 
@@ -388,4 +409,6 @@ uv publish
 
 !!! tip "Публикация в monorepo"
     Если проект использует workspaces, можно собирать отдельный пакет через
-    `uv build --package <name>`. Подробнее о workspaces - в разделе [Workspaces](11-workspaces.md).
+    `uv build --package <name>`. Подробнее о workspaces - в разделе [Workspaces](13-workspaces.md).
+
+---

@@ -7,19 +7,25 @@
 Использование `uv` в Docker-контейнерах дает заметный прирост скорости сборки
 образов благодаря эффективному кешированию слоев и быстрой установке зависимостей.
 
+!!! info "Пререквизиты для раздела"
+    Перед применением примеров предполагается, что у вас уже есть:
+    - проект с `pyproject.toml` и `uv.lock`;
+    - базовый workflow зависимостей (`uv add`, `uv lock`, `uv sync`);
+    - понимание строгих режимов `--frozen`/`--locked` из [Sync-workflow](07-sync-workflow.md).
+
 ### Установка uv в Dockerfile
 
 Рекомендуемый способ - копирование бинарного файла из официального образа:
 
 ```dockerfile
-COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /uvx /bin/
 ```
 
 Этот способ быстрее, чем `pip install uv`, и не загрязняет зависимости проекта.
 
 !!! warning "Пиннинг версии uv"
     Тег `latest` удобен для демонстрации, но для production и CI нужно
-    фиксировать версию `uv` (например, `ghcr.io/astral-sh/uv:0.11.13`),
+    фиксировать версию `uv` (например, `ghcr.io/astral-sh/uv:0.11.14`),
     чтобы сборки оставались воспроизводимыми.
 
 ### Ключевые переменные окружения для Docker
@@ -84,7 +90,7 @@ uv sync --no-install-package my-lib
 ```
 
 Флаги `--no-install-workspace` и `--no-install-package` относятся
-к [workspaces](11-workspaces.md) - монорепозиториям с несколькими пакетами,
+к [workspaces](13-workspaces.md) - монорепозиториям с несколькими пакетами,
 управляемыми одним `uv.lock`.
 
 Типичный Dockerfile с разделением на две группы слоев:
@@ -102,12 +108,16 @@ RUN uv sync --frozen --no-dev
 При изменении только исходного кода группа 1 берется из кеша,
 устанавливается только сам проект.
 
-### Базовый пример
+!!! note ""
+    `--no-dev` отключает только группу `dev`.
+    Подробнее - в разделе [Группы зависимостей](06-dependencies.md#группы-зависимостей).
+
+### Минимально runnable пример
 
 ```dockerfile
 FROM python:3.12-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /uvx /bin/
 
 ENV UV_PYTHON_DOWNLOADS=never
 ENV UV_COMPILE_BYTECODE=1
@@ -126,6 +136,10 @@ RUN uv sync --frozen --no-dev --no-cache
 CMD ["uv", "run", "python", "-m", "myapp"]
 ```
 
+Этот пример подходит как стартовый шаблон для первого рабочего образа.
+Ниже в разделе приведены production-template варианты: многоэтапная сборка,
+cache mount, отдельные стадии builder/runtime и CI-матрицы.
+
 !!! note "Флаг `--no-cache`"
     В Docker рекомендуется использовать `--no-cache`, чтобы uv не сохранял свой
     внутренний кеш в образе. Кеширование и так обеспечивается слоями Docker.
@@ -137,7 +151,7 @@ Multi-stage build позволяет создать минимальный produ
 
 ```dockerfile
 # --- Этап 1: сборка ---
-FROM ghcr.io/astral-sh/uv:0.11.13 AS uv
+FROM ghcr.io/astral-sh/uv:0.11.14 AS uv
 
 FROM python:3.12-slim AS builder
 
@@ -176,7 +190,7 @@ CMD ["python", "-m", "myapp"]
 
 ```dockerfile
 # --- Этап сборки ---
-FROM ghcr.io/astral-sh/uv:0.11.13 AS uv
+FROM ghcr.io/astral-sh/uv:0.11.14 AS uv
 
 FROM python:3.12-slim AS builder
 
@@ -231,7 +245,7 @@ CMD ["uvicorn", "myapp.main:app", "--host", "0.0.0.0", "--port", "8000"]
 FROM python:3.12-slim-bookworm AS builder
 
 # uv нужен только на этапе сборки
-COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /uvx /bin/
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
@@ -293,7 +307,7 @@ CMD ["python", "-m", "myapp"]
 
 ```dockerfile
 FROM python:3.12-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:0.11.13 \
+COPY --from=ghcr.io/astral-sh/uv:0.11.14 \
      /uv /uvx /bin/
 COPY pyproject.toml uv.lock ./
 RUN uv export --frozen --no-dev --no-hashes \
@@ -347,7 +361,7 @@ jobs:
       - name: Установка uv
         uses: astral-sh/setup-uv@v8
         with:
-          version: "0.11.13"
+          version: "0.11.14"
           enable-cache: true
 
       - name: Проверка lockfile
@@ -400,7 +414,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v8
         with:
-          version: "0.11.13"
+          version: "0.11.14"
           enable-cache: true
 
       - run: uv sync --locked --python ${{ matrix.python-version }}
@@ -420,7 +434,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v8
         with:
-          version: "0.11.13"
+          version: "0.11.14"
       - run: uv build
       - run: uv publish --trusted-publishing always
 ```
@@ -434,7 +448,7 @@ jobs:
 
 ```yaml
 variables:
-  UV_VERSION: "0.11.13"
+  UV_VERSION: "0.11.14"
   PYTHON_VERSION: "3.12"
   BASE_LAYER: "bookworm-slim"
   UV_CACHE_DIR: .uv-cache
@@ -489,6 +503,8 @@ lint:
 - **Ключ кеша по файлам** - кеш привязан к содержимому `uv.lock` и
   `pyproject.toml`. При изменении зависимостей кеш пересоздается.
 - **`UV_LINK_MODE=copy`** - аналогично Docker, копирует файлы вместо hardlink.
+  Комбинация с кешированием `.uv-cache/` увеличивает дисковое потребление,
+  но обеспечивает переносимость кеша между раннерами.
 - **Кеширование** - кешируется только `.uv-cache/`. `.venv` - генерируемое
   окружение, его надежнее пересоздавать через `uv sync --frozen`, чем кешировать
   (зависит от платформы, версии Python и путей).
@@ -502,7 +518,7 @@ default:
   image: python:3.12-slim
 
 variables:
-  UV_VERSION: "0.11.13"
+  UV_VERSION: "0.11.14"
 
 before_script:
   - pip install --no-cache-dir "uv==${UV_VERSION}"
@@ -532,6 +548,8 @@ bind-mount, workspace-проекты).
     Без `--frozen`, `--locked` или предварительного `uv lock --check`
     вы теряете гарантию воспроизводимости сборки. Это одна из самых
     частых ошибок при настройке CI с uv.
+
+Подробнее о семантике флагов - в разделе [Sync-workflow](07-sync-workflow.md#флаги-управления-синхронизацией).
 
 ## Pre-commit и линтинг
 
@@ -575,7 +593,7 @@ uv run mypy src/
 ```yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.0
+    rev: v0.15.12
     hooks:
       - id: ruff
         args: [--fix]

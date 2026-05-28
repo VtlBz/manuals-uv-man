@@ -44,6 +44,7 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.snippets
+  - pymdownx.keys
   - pymdownx.tasklist:
       custom_checkbox: true
   - attr_list
@@ -63,16 +64,16 @@ nav:
   - Главная: index.md
   - "1. Введение и мотивация": 01-introduction.md
   - "2. Установка и настройка": 02-installation.md
-  - "3. Инициализация проекта": 03-project-init.md
-  - "4. Управление зависимостями": 04-dependencies.md
-  - "5. Запуск кода и инструментов": 05-running-code.md
-  - "6. Виртуальные окружения": 06-environments.md
+  - "3. Управление версиями Python": 03-python-versions.md
+  - "4. Инициализация проекта": 04-project-init.md
+  - "5. Виртуальные окружения": 05-environments.md
+  - "6. Управление зависимостями": 06-dependencies.md
   - "7. Sync-workflow": 07-sync-workflow.md
-  - "8. Управление версиями Python": 08-python-versions.md
+  - "8. Запуск кода и инструментов": 08-running-code.md
   - "9. Конфигурация": 09-configuration.md
   - "10. Docker и CI/CD": 10-docker-ci.md
-  - "11. Workspaces": 11-workspaces.md
-  - "12. Сборка и публикация пакетов": 12-publishing.md
-  - "13. Миграция с существующих инструментов": 13-migration.md
+  - "11. Сборка и публикация пакетов": 11-publishing.md
+  - "12. Миграция с существующих инструментов": 12-migration.md
+  - "13. Workspaces": 13-workspaces.md
   - "14. Диагностика и решение проблем": 14-troubleshooting.md
   - "15. Best Practices и справочник": 15-best-practices.md

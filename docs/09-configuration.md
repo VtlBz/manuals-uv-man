@@ -147,6 +147,24 @@
     python-downloads = "automatic"
     ```
 
+### `package = false`
+
+```toml
+[tool.uv]
+package = false
+```
+
+Указывает, что проект не является пакетом Python и не должен собираться или
+устанавливаться в окружение. Используется для:
+
+- корневого `pyproject.toml` в workspace, который служит только конфигурацией;
+- проектов без `[build-system]`, которым не нужна установка как пакета;
+- проектов, где `pyproject.toml` используется только для конфигурации `uv`
+  и инструментов разработки.
+
+При `package = false` команда `uv sync` не будет пытаться собрать и установить
+текущий проект в `.venv`, а только установит зависимости.
+
 ### Индексы пакетов `[[tool.uv.index]]`
 
 Для подключения дополнительных или приватных индексов:
@@ -300,15 +318,15 @@ special-package = { url = "https://files.company.com/special-package-1.0.tar.gz"
 
     ```yaml
     env:
-      UV_FROZEN: "1"              # Don't update lockfile
-      UV_CACHE_DIR: /tmp/uv-cache # Cacheable path
-      UV_PYTHON: "3.12"           # Pin Python version
+      UV_FROZEN: "1"              # Не обновлять lockfile
+      UV_CACHE_DIR: /tmp/uv-cache # Кешируемый путь
+      UV_PYTHON: "3.12"           # Зафиксировать версию Python
 
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v8
         with:
-          version: "0.11.13"
+          version: "0.11.14"
       - run: uv sync
       - run: uv run pytest
     ```
@@ -323,7 +341,7 @@ special-package = { url = "https://files.company.com/special-package-1.0.tar.gz"
     ENV UV_LINK_MODE=copy
     ENV UV_PYTHON_DOWNLOADS=never
 
-    COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
+    COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /uvx /bin/
     COPY pyproject.toml uv.lock ./
     RUN uv sync --no-dev --no-editable
     ```
@@ -508,7 +526,30 @@ env:
   UV_INDEX_COMPANY_REGISTRY_PASSWORD: ${{ secrets.PYPI_TOKEN }}
 ```
 
-#### Способ 2. Файл .netrc
+#### Способ 2. `uv auth` (интерактивный вход)
+
+Для повседневной работы с приватными registries удобно использовать встроенные
+команды `uv auth`:
+
+```bash
+# Войти в сервис (пример: Artifactory/PyPI-compatible)
+uv auth login https://pypi.company.com/simple/
+
+# Показать токен для сервиса (если поддерживается)
+uv auth token https://pypi.company.com/simple/
+
+# Показать директорию, где uv хранит auth-данные
+uv auth dir
+
+# Выйти из сервиса
+uv auth logout https://pypi.company.com/simple/
+```
+
+`uv auth` хорошо подходит для локальной разработки, когда не хочется вручную
+поддерживать `.netrc`. Для CI/CD предпочтительнее переменные окружения
+из секретов.
+
+#### Способ 3. Файл .netrc
 
 Создайте файл `~/.netrc` с учетными данными:
 
@@ -526,7 +567,7 @@ chmod 600 ~/.netrc
 При обращении к индексу, требующему аутентификации, `uv` автоматически ищет
 подходящие учетные данные в `.netrc` по имени хоста.
 
-#### Способ 3. Интеграция с keyring
+#### Способ 4. Интеграция с keyring
 
 `uv` поддерживает Python-пакет `keyring` для безопасного хранения учетных данных:
 
@@ -538,7 +579,7 @@ uv tool install keyring
 keyring set https://pypi.company.com/simple/ deploy-user
 ```
 
-#### Способ 4. Учетные данные в URL (не рекомендуется)
+#### Способ 5. Учетные данные в URL (не рекомендуется)
 
 === "pyproject.toml"
 
@@ -595,7 +636,7 @@ keyring set https://pypi.company.com/simple/ deploy-user
     Секция `[tool.uv.sources]` всегда читается из `pyproject.toml`,
     даже при наличии `uv.toml`. Это сделано намеренно - источники
     зависимостей привязаны к проекту и должны быть одинаковы на
-    всех машинах. Подробнее о конфигурации см. раздел [Источники зависимостей `[tool.uv.sources]`](#источники-зависимостей-tooluvsources).
+    всех машинах. Подробнее о конфигурации - в разделе [Источники зависимостей `[tool.uv.sources]`](#источники-зависимостей-tooluvsources).
 
 ### Git-источники
 
@@ -931,6 +972,35 @@ du -sh "$(uv cache dir)"
 
     Диагностика проблем с кешем и таблица команд очистки -
     в разделе [Управление кешем (диагностика)](14-troubleshooting.md#управление-кешем).
+
+---
+
+## Воспроизводимые сборки во времени: `exclude-newer`
+
+Настройка `exclude-newer` ограничивает resolution только пакетами,
+опубликованными до указанной даты:
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    exclude-newer = "2026-01-01T00:00:00Z"
+    ```
+
+=== "uv.toml"
+
+    ```toml
+    exclude-newer = "2026-01-01T00:00:00Z"
+    ```
+
+```bash
+# Или через CLI
+uv lock --exclude-newer "2026-01-01"
+```
+
+Это полезно для compliance-требований, долгоживущих production-сборок
+и отладки, когда нужно воспроизвести окружение на определенную дату.
+Формат даты - RFC 3339.
 
 ---
 

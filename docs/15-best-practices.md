@@ -53,12 +53,15 @@ myproject/
 !!! warning "uv.lock обязательно в git"
     Это самое важное правило. Без `uv.lock` в репозитории каждый разработчик и
     CI-сервер может получить разные версии зависимостей. Коммитите lockfile всегда.
+    Для библиотек lockfile фиксирует dev/test-окружение maintainers; он не попадает
+    в дистрибутив пакета и не влияет на потребителей.
     Подробнее о lockfile - в разделе [Sync-workflow](07-sync-workflow.md).
 
 ### Правила для CI/CD
 
 - Контролируйте целостность lockfile: `uv lock --check` + `--frozen`
   на последующих шагах, либо `--locked` (без отдельной проверки).
+  Подробнее о семантике флагов - в [Sync-workflow](07-sync-workflow.md#флаги-управления-синхронизацией).
 - Используйте `uv run` для запуска тестов и скриптов -
   не активируйте окружение вручную.
 - Кешируйте директорию кеша `uv` между сборками.
@@ -94,6 +97,100 @@ docs = ["mkdocs-material", "mkdocstrings[python]"]
 
 Это заставит `uv` использовать свои управляемые версии Python, а не системные,
 что устраняет проблему "у меня другая minor-версия".
+
+## Стратегии управления Python в команде
+
+При внедрении `uv` необходимо выбрать стратегию работы с версиями Python.
+
+### Стратегия managed-only
+
+`uv` полностью отвечает за установку Python. Системные интерпретаторы
+и сторонние менеджеры не используются.
+
+=== "uv.toml"
+
+    ```toml
+    python-preference = "only-managed"
+    python-downloads = "automatic"
+    ```
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    python-preference = "only-managed"
+    python-downloads = "automatic"
+    ```
+
+**Достоинства:** единственный инструмент, zero-setup на новых машинах,
+не нужен отдельный шаг установки Python в Docker/CI.
+
+**Недостатки:** Python из python-build-standalone имеет особенности
+(см. [Особенности standalone Python](03-python-versions.md#особенности-standalone-python)).
+
+**Когда выбирать:** новая команда без ограничений, простой онбординг.
+
+### Стратегия system-only
+
+`uv` используется как замена pip + venv + pip-tools. Версии Python
+устанавливаются отдельно (pyenv, пакетный менеджер ОС).
+
+=== "uv.toml"
+
+    ```toml
+    python-preference = "only-system"
+    python-downloads = "never"
+    ```
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    python-preference = "only-system"
+    python-downloads = "never"
+    ```
+
+**Достоинства:** нет дополнительного источника Python, нет особенностей
+standalone-сборок.
+
+**Недостатки:** требуется отдельная установка Python на каждой машине.
+
+**Когда выбирать:** жесткие требования безопасности, сложные нативные сборки.
+
+### Стратегия hybrid
+
+Системный Python (включая pyenv) используется в приоритете, но `uv`
+может автоматически скачать managed-версию при необходимости.
+
+=== "uv.toml"
+
+    ```toml
+    python-preference = "system"
+    python-downloads = "automatic"
+    ```
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    python-preference = "system"
+    python-downloads = "automatic"
+    ```
+
+**Достоинства:** мягкая миграция, автоматическое скачивание недостающих версий.
+
+**Недостатки:** два источника Python может усложнить диагностику.
+
+**Когда выбирать:** переход с pyenv на uv (переходный период 2-4 недели).
+
+### Рекомендации по выбору
+
+| Ситуация | Рекомендация |
+| -------- | ------------ |
+| Новая команда без ограничений | managed-only |
+| Переход с pyenv | hybrid, затем managed-only |
+| Жесткие требования безопасности | system-only |
+| Сложные нативные сборки | system-only |
 
 ---
 
@@ -173,7 +270,7 @@ Thumbs.db
 | Создать библиотеку | `uv init --lib mylib` |
 | Синхронизировать окружение | `uv sync` |
 | Синхронизировать (strict) | `uv sync --locked` или `uv lock --check` + `uv sync --frozen` |
-| Синхронизировать без dev | `uv sync --no-dev` |
+| Отключить группу `dev` | `uv sync --no-dev` |
 
 ### Зависимости
 
@@ -194,7 +291,7 @@ Thumbs.db
 
 | Задача | Команда |
 | ------ | ------- |
-| Запустить скрипт | `uv run python app.py` |
+| Запустить скрипт | `uv run python main.py` |
 | Запустить модуль | `uv run python -m myapp` |
 | Запустить тесты | `uv run pytest` |
 | Запустить с покрытием | `uv run pytest --cov` |
@@ -271,13 +368,8 @@ Thumbs.db
 
 ### pyenv -> uv
 
-| Старая команда | Эквивалент uv | Примечание |
-| -------------- | ------------- | ---------- |
-| `pyenv install 3.12` | `uv python install 3.12` | Установка Python |
-| `pyenv local 3.12` | `uv python pin 3.12` | Записывает в `.python-version` |
-| `pyenv global 3.12` | - | uv работает на уровне проекта |
-| `pyenv versions` | `uv python list` | Список доступных версий |
-| `pyenv which python` | `uv python find` | Путь к интерпретатору |
+Подробное сравнение команд pyenv и uv, а также пошаговый план миграции -
+в разделе [Миграция с pyenv](12-migration.md#миграция-с-pyenv).
 
 ### virtualenv / venv -> uv
 

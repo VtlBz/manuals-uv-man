@@ -1,6 +1,15 @@
-# Раздел 6. Виртуальные окружения
+# Раздел 5. Виртуальные окружения
 
 ---
+
+!!! info "Перед началом раздела"
+    Рекомендуется сначала пройти:
+    - [Установка и настройка](02-installation.md);
+    - [Управление версиями Python](03-python-versions.md);
+    - [Инициализация проекта](04-project-init.md).
+
+    В текущем core-пути это подготовительный шаг перед разделами
+    [Управление зависимостями](06-dependencies.md) и [Sync-workflow](07-sync-workflow.md).
 
 ## Как uv управляет .venv автоматически
 
@@ -39,6 +48,11 @@ ls .venv/bin/python
 Вам **не нужно** вручную создавать окружение или активировать его для работы
 через `uv run`. Все происходит прозрачно.
 
+!!! tip "Что дальше по маршруту"
+    После базового понимания окружений переходите к
+    [Управлению зависимостями](06-dependencies.md), а затем к
+    [Sync-workflow](07-sync-workflow.md), где подробно разбираются `uv lock` и `uv sync`.
+
 !!! warning "Не коммитьте .venv в git"
     Директория `.venv` содержит бинарные файлы интерпретатора и установленные
     пакеты. Она не должна попадать в систему контроля версий. Убедитесь, что
@@ -74,6 +88,13 @@ uv venv myenv
 
 # Создание с конкретной версией и другим именем
 uv venv --python 3.12 .venv-3.12
+```
+
+Флаг `--seed` устанавливает `pip` и `setuptools` в создаваемое окружение.
+Это полезно для legacy-инструментов, которые вызывают `pip` изнутри окружения:
+
+```bash
+uv venv --seed .venv
 ```
 
 !!! warning "uv всегда по умолчанию работает с `.venv`"
@@ -135,7 +156,7 @@ uv venv --python-preference only-system
 
 ```bash
 # Активация не нужна - uv управляет всем сам
-uv run python app.py
+uv run python main.py
 uv run pytest
 uv run flask run
 ```
@@ -380,7 +401,7 @@ uv sync
 
 | Действие | uv run | Ручная активация |
 | -------- | ------ | ---------------- |
-| Запуск скрипта | `uv run python app.py` | `source .venv/bin/activate && python app.py` |
+| Запуск скрипта | `uv run python main.py` | `source .venv/bin/activate && python main.py` |
 | Запуск тестов | `uv run pytest` | `source .venv/bin/activate && pytest` |
 | Запуск линтера | `uv run ruff check .` | `source .venv/bin/activate && ruff check .` |
 | Интерактивный REPL | `uv run python` | `source .venv/bin/activate && python` |

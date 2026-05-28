@@ -57,7 +57,7 @@ uv sync
 ```
 
 Безопасно - окружение восстанавливается из `uv.lock`.
-Подробнее об окружениях - в разделе [Виртуальные окружения](06-environments.md).
+Подробнее об окружениях - в разделе [Виртуальные окружения](05-environments.md).
 
 ### Шаг 5. Проверить `pyproject.toml`
 
@@ -210,7 +210,7 @@ editable-режиме возникает ошибка.
 
 ```toml
 [build-system]
-requires = ["uv_build>=0.11.13,<0.12"]
+requires = ["uv_build>=0.11.14,<0.12"]
 build-backend = "uv_build"
 ```
 
@@ -252,8 +252,8 @@ export UV_INDEX_COMPANY_REGISTRY_PASSWORD="token"
 `uv` не может разобрать файл `.python-version`, потому что в нем
 записано имя виртуального окружения pyenv (например, `myproject-3.12`).
 
-Начиная с `uv` 0.6+, такие записи игнорируются. Если используете
-более раннюю версию - обновите `uv`:
+В актуальных версиях `uv` (с 0.6+) такие записи игнорируются. Если используете
+старую версию и получаете ошибку - обновите `uv`:
 
 ```bash
 uv self update
@@ -278,18 +278,76 @@ uv python pin 3.12
 
 ### Сетевые ошибки (proxy, SSL)
 
-**Proxy:** настроить переменные окружения:
+#### certificate verify failed
+
+Ошибка возникает при использовании корпоративных proxy с TLS-инспекцией
+или self-signed сертификатов.
+
+Решение: указать `uv` использовать системные сертификаты:
 
 ```bash
-export HTTPS_PROXY=http://proxy.example.com:8080
-export HTTP_PROXY=http://proxy.example.com:8080
+UV_SYSTEM_CERTS=true uv sync -vv
 ```
 
-**SSL (self-signed сертификат):**
+Или через конфигурацию:
+
+=== "uv.toml"
+
+    ```toml
+    system-certs = true
+    ```
+
+=== "pyproject.toml"
+
+    ```toml
+    [tool.uv]
+    system-certs = true
+    ```
+
+Для указания конкретного файла сертификатов:
 
 ```bash
-export SSL_CERT_FILE=/path/to/internal-ca.crt
+SSL_CERT_FILE=/path/to/ca-bundle.crt uv sync
 ```
+
+#### 401 / 403 при доступе к private index
+
+Проверить credentials:
+
+```bash
+# Проверить, что переменные установлены
+echo "$UV_INDEX_COMPANY_USERNAME"
+echo "$UV_INDEX_COMPANY_PASSWORD"
+
+# Запуск с подробным выводом
+uv sync -vv
+```
+
+Убедитесь, что переменные окружения соответствуют имени индекса в конфигурации.
+Для индекса с `name = "company"` переменные должны быть
+`UV_INDEX_COMPANY_USERNAME` и `UV_INDEX_COMPANY_PASSWORD`.
+
+#### Proxy
+
+```bash
+# HTTP/HTTPS proxy
+HTTPS_PROXY=http://proxy.example.com:8080 uv sync
+
+# Исключения из proxy
+NO_PROXY=pypi.org,internal.example.com uv sync
+```
+
+#### No compatible wheel
+
+Ошибка означает, что пакет не публикует wheel для текущей платформы.
+`uv` попытается собрать из исходников, для чего могут потребоваться
+build tools (`gcc`, `rust`, `cmake` и т.д.).
+
+Типичные решения:
+
+- Установить build-зависимости: `apt install build-essential`
+- Для Rust-пакетов: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- Проверить доступность wheels: `uv pip show --no-deps <package>`
 
 **Проверка доступа к PyPI:**
 
@@ -366,7 +424,7 @@ ENV UV_LINK_MODE=copy
 Ниже - указатели на ошибки, описание которых находится в контексте
 соответствующих разделов.
 
-**Управление версиями Python ([Сосуществование с pyenv](08-python-versions.md#сосуществование-с-pyenv)):**
+**Управление версиями Python ([Сосуществование с pyenv](03-python-versions.md#сосуществование-с-pyenv)):**
 
 - Не работают стрелки/Backspace в REPL managed Python - проблема terminfo
   при прямом запуске без `uv run`.
@@ -380,7 +438,7 @@ ENV UV_LINK_MODE=copy
 - Разрешение конфликтов `uv.lock` после merge - см. также
   [Merge-конфликты в uv.lock](#merge-конфликты-в-uvlock) выше.
 
-**Workspaces ([Типичные ошибки](11-workspaces.md#типичные-ошибки)):**
+**Workspaces ([Типичные ошибки](13-workspaces.md#типичные-ошибки)):**
 
 - Ошибки импорта из-за общего `.venv` в workspace - пакет случайно
   использует зависимость другого member.
@@ -514,24 +572,51 @@ export UV_INDEX_INTERNAL_PASSWORD=token
 
 ---
 
-## Аудит безопасности (preview)
+## Аудит безопасности
 
-!!! warning "Preview-функция"
-    `uv audit` - preview-функция, которая может измениться в будущих версиях.
-    Для использования может потребоваться флаг `--preview`.
-
-Команда `uv audit` проверяет зависимости проекта на наличие известных уязвимостей:
+Команда `uv audit` проверяет зависимости проекта на наличие известных уязвимостей.
+По умолчанию используется база [OSV](https://osv.dev/) (Open Source Vulnerabilities).
 
 ```bash
 # Аудит зависимостей текущего проекта
 uv audit
 
-# Аудит конкретно зафиксированных зависимостей
+# Аудит зафиксированных зависимостей (без пересоздания lockfile)
 uv audit --locked
+
+# Аудит без блокировки проекта
+uv audit --frozen
+```
+
+Фильтрация и игнорирование уязвимостей:
+
+```bash
+# Игнорировать конкретную уязвимость по ID
+uv audit --ignore GHSA-xxxx-yyyy-zzzz
+
+# Игнорировать уязвимость, пока нет исправления
+uv audit --ignore-until-fixed GHSA-xxxx-yyyy-zzzz
+
+# Аудит только production-зависимостей (без dev)
+uv audit --no-dev
+
+# Аудит для конкретной платформы
+uv audit --python-platform linux --python-version 3.12
+```
+
+Коды возврата:
+
+- `0` - уязвимости не найдены.
+- `1` - найдены уязвимости (полезно для CI - шаг упадет автоматически).
+
+Использование в CI:
+
+```yaml
+- name: Аудит безопасности
+  run: uv audit --locked
 ```
 
 Если уязвимости найдены, `uv` выведет список затронутых пакетов
 с идентификаторами CVE и рекомендациями по обновлению.
 
-Это удобная альтернатива отдельным инструментам вроде `safety` или `pip-audit` -
-проверка безопасности встроена прямо в менеджер пакетов.
+---

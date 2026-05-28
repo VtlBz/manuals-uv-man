@@ -10,7 +10,8 @@ The guide covers working with `uv` from installation and basic commands
 to advanced scenarios: Python version management, dependencies,
 environments, sync workflow, Docker/CI, workspaces, package publishing.
 The content is written in Russian, formatted in Markdown, and built into
-a static site via MkDocs Material for publishing on GitHub Pages.
+a static site via MkDocs Material for deployment to any static-hosting
+platform (GitHub Pages, GitLab Pages, Netlify, etc.).
 
 In addition to the guide, the repository stores supplementary materials
 for creating an educational course on `uv` (practical assignments,
@@ -27,7 +28,7 @@ Python developers who:
 ## Repository Structure
 
 `docs/` contains the main guide - 15 sections in Markdown format.
-These files are built into a static site and published on GitHub Pages.
+These files are built into a static documentation site.
 
 `course/` stores supplementary materials for creating an educational
 course based on the guide: practical assignments and self-check questions,
@@ -46,7 +47,7 @@ uv.lock         dependency lockfile
 The project is managed via `uv`. To build and preview locally:
 
 ```bash
-uv sync
+uv sync --group docs
 uv run mkdocs serve
 ```
 
@@ -55,13 +56,18 @@ The site will be available at `http://127.0.0.1:8000/`.
 For a static build:
 
 ```bash
-uv run mkdocs build
+uv run --group docs mkdocs build --strict
 ```
 
 ## Deployment
 
-The site is published via GitHub Pages using GitHub Actions.
-A push to `main` triggers an automatic build and deploy.
+The repository does not enforce a specific CI/CD deployment pipeline.
+Configure deployment for your platform (for example, GitHub Pages)
+and use the build command:
+
+```bash
+uv run --group docs mkdocs build --strict
+```
 
 ## Authorship Note
 

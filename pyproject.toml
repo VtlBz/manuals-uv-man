@@ -3,7 +3,11 @@ name = "uv-manual"
 version = "0.1.0"
 description = "Практическое руководство по менеджеру uv для Python-разработчиков"
 requires-python = ">=3.12"
-dependencies = ["mkdocs-material", "mkdocs-include-markdown-plugin"]
+dependencies = []
 
 [dependency-groups]
 dev = []
+docs = [
+    "mkdocs-material",
+    "mkdocs-include-markdown-plugin",
+]

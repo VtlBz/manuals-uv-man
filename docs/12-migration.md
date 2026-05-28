@@ -1,6 +1,10 @@
-# Раздел 13. Миграция с существующих инструментов
+# Раздел 12. Миграция с существующих инструментов
 
 ---
+
+!!! info "Альтернативный трек"
+    Этот раздел не обязателен для базового greenfield-пути.
+    Используйте его, если у вас уже есть существующий проект и нужно перейти на `uv`.
 
 ## Миграция с requirements.txt
 
@@ -178,6 +182,12 @@ rm requirements.txt requirements-dev.txt
 
 Обновите все файлы, которые ссылаются на старые зависимости:
 
+!!! info "Пререквизиты для шага"
+    Перед обновлением Docker/CI убедитесь, что уже выполнены:
+    - импорт зависимостей в `pyproject.toml`;
+    - создание актуального `uv.lock`;
+    - успешный локальный запуск через `uv sync` и `uv run`.
+
 **1. Dockerfile** (сборка образа):
 
 До миграции:
@@ -194,15 +204,23 @@ CMD ["python", "-m", "app.main"]
 
 ```dockerfile
 FROM python:3.12-slim
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:0.11.13 /uv /uvx /bin/
-# Copy project files
+# Установка uv
+COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /uvx /bin/
+# Копирование файлов проекта
 COPY pyproject.toml uv.lock ./
-# Install dependencies (without dev)
+# Установка зависимостей (без dev)
 RUN uv sync --frozen --no-dev --no-editable
 COPY . .
 CMD ["uv", "run", "python", "-m", "app.main"]
 ```
+
+Это минимально runnable вариант для миграции. Более сложные production-template
+паттерны (multi-stage, cache mount, разделение слоев) - в разделе
+[Docker и CI/CD](10-docker-ci.md).
+
+!!! note ""
+    `--no-dev` отключает только группу `dev`.
+    Подробнее - в разделе [Группы зависимостей](06-dependencies.md#группы-зависимостей).
 
 **2. CI/CD** (GitHub Actions):
 
@@ -228,7 +246,7 @@ steps:
   - name: Install uv
     uses: astral-sh/setup-uv@v8
     with:
-      version: "0.11.13"
+      version: "0.11.14"
       enable-cache: true
 
   - name: Check lockfile
@@ -241,7 +259,8 @@ steps:
     run: uv run --frozen pytest
 ```
 
-Полный production-ready CI-шаблон с линтингом, проверкой типов и матрицей
+Это минимально runnable CI-вариант после миграции. Полный production-template
+шаблон с линтингом, проверкой типов и матрицей
 версий - в разделе [Docker и CI/CD](10-docker-ci.md#github-actions).
 
 **3. README.md** (инструкция для разработчиков):
@@ -436,8 +455,54 @@ uv sync
 
 ## Миграция с pyenv
 
-Переход с pyenv можно выполнять постепенно. Ниже описаны четыре фазы -
+Переход с pyenv можно выполнять постепенно. Ниже описаны фазы -
 от минимальных изменений до полного отказа от pyenv.
+
+### Как uv обнаруживает pyenv-установленный Python
+
+`uv` обнаруживает Python-интерпретаторы через `PATH`. Для pyenv:
+
+- Если pyenv настроен через shims (`~/.pyenv/shims/` в `PATH`), `uv` находит Python через shims.
+- `uv` также может найти pyenv-версии напрямую по полному пути.
+
+### Проблема shims pyenv
+
+Pyenv использует shims - скрипты-обертки в `~/.pyenv/shims/`. Если shim для версии существует, но сама версия не установлена, `uv` получит ошибку.
+
+#### Решение 1: Активировать версии через pyenv global
+
+```bash
+pyenv global 3.11.11 3.12.9 3.13.2
+```
+
+#### Решение 2: Переменная PYENV_VERSION
+
+```bash
+PYENV_VERSION=3.12.9 uv venv
+```
+
+#### Решение 3: Полный путь к интерпретатору
+
+```bash
+uv venv --python ~/.pyenv/versions/3.12.9/bin/python
+```
+
+#### Решение 4: python-preference = managed
+
+```bash
+uv venv --python-preference managed --python 3.12
+```
+
+### Сравнение команд pyenv и uv
+
+| Действие | pyenv | uv |
+| -------- | ----- | -- |
+| Установить версию | `pyenv install 3.12` | `uv python install 3.12` |
+| Удалить версию | `pyenv uninstall 3.12.0` | `uv python uninstall 3.12` |
+| Список установленных | `pyenv versions` | `uv python list --only-installed` |
+| Закрепить для проекта | `pyenv local 3.12` | `uv python pin 3.12` |
+| Закрепить глобально | `pyenv global 3.12` | `uv python pin --global 3.12` |
+| Найти путь к Python | `pyenv which python3.12` | `uv python find 3.12` |
 
 ### Фаза 1. Используем pyenv для Python, uv для пакетов
 
@@ -537,17 +602,26 @@ uv python list --only-installed
 
 ### Фаза 4. Удаление pyenv (опционально)
 
-Когда все проекты переведены на `uv` и вы убедились, что всё работает:
+Когда все проекты переведены на `uv` и вы убедились, что всё работает,
+можно удалить pyenv. Рекомендуется поэтапный подход:
+
+**Шаг 1. Отключить pyenv в конфигурации оболочки:**
+
+```bash
+# Закомментировать строки pyenv в ~/.bashrc или ~/.zshrc:
+#   export PYENV_ROOT="$HOME/.pyenv"
+#   export PATH="$PYENV_ROOT/bin:$PATH"
+#   eval "$(pyenv init -)"
+```
+
+**Шаг 2. Проработать 1-2 недели без pyenv.**
+Если возникнут проблемы, раскомментировать строки обратно.
+
+**Шаг 3. Удалить pyenv:**
 
 ```bash
 # Удаление pyenv (если установлен через git clone)
 rm -rf ~/.pyenv
-
-# Удаление строк pyenv из конфига оболочки
-# Edit ~/.bashrc or ~/.zshrc and remove:
-#   export PYENV_ROOT="$HOME/.pyenv"
-#   export PATH="$PYENV_ROOT/bin:$PATH"
-#   eval "$(pyenv init -)"
 ```
 
 !!! warning "Не спешите удалять pyenv"
@@ -595,6 +669,59 @@ uv python pin 3.12.4
     `uv` создает виртуальное окружение автоматически при первом `uv sync` или
     `uv run`. Окружение размещается в `.venv/` в корне проекта. Явное создание и
     активация окружения, как правило, не нужны.
+
+### Конфликт с pyenv-virtualenv
+
+Плагин pyenv-virtualenv записывает в `.python-version` имя виртуального окружения, а не номер версии. `uv` игнорирует такие записи и продолжает поиск интерпретатора по стандартному алгоритму.
+
+---
+
+## Миграция с Poetry
+
+### Пошаговый план
+
+1. Проверить, используется ли `[project]` (PEP 621) или только `[tool.poetry]`.
+2. Перенести метаданные в `[project]` (PEP 621 формат).
+3. Перенести runtime-зависимости в `[project.dependencies]`.
+4. Перенести dev/test/lint/docs-зависимости в `[dependency-groups]`.
+5. Перенести extras в `[project.optional-dependencies]`.
+6. Перенести scripts в `[project.scripts]`.
+7. Выбрать build backend (`hatchling`, `uv_build`, `setuptools`).
+8. Выполнить `uv lock`.
+9. Выполнить `uv sync` и прогнать тесты.
+10. Удалить `poetry.lock` только после успешного CI.
+
+!!! warning "Не конвертируйте lockfile"
+    `poetry.lock` нельзя преобразовать в `uv.lock` напрямую.
+    `uv.lock` должен быть построен самим `uv` через `uv lock`.
+
+---
+
+## Миграция с PDM
+
+PDM часто уже использует PEP 621 (`[project]`), поэтому миграция
+может быть проще. Основные шаги:
+
+1. Проверить формат `pyproject.toml` - если `[project]` уже используется,
+   метаданные переносить не нужно.
+2. Перенести dev-зависимости из `[tool.pdm.dev-dependencies]` в `[dependency-groups]`.
+3. Удалить `[tool.pdm]` секции.
+4. Выполнить `uv lock` и `uv sync`.
+5. Удалить `pdm.lock` после успешного CI.
+
+---
+
+## Миграция с Pipenv
+
+1. Восстановить зависимости из `Pipfile` в `pyproject.toml`:
+    - `[packages]` -> `[project.dependencies]`
+    - `[dev-packages]` -> `[dependency-groups]` dev
+2. Выполнить `uv lock` и `uv sync`.
+3. Удалить `Pipfile` и `Pipfile.lock` после успешного CI.
+
+!!! note "Общее правило миграции lockfile"
+    Старые lock-файлы (`poetry.lock`, `pdm.lock`, `Pipfile.lock`) удаляются
+    только после полной проверки нового workflow в CI.
 
 ---
 
